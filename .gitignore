@@ -1,0 +1,17 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+./tests
+./tasks
+./docs
+
+# Neovim
+*.swp
+*.swo
+*~
+tags
+
+# Lua
+luac.out
