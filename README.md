@@ -22,7 +22,7 @@ A Neovim plugin for exploring, navigating, and testing [FastAPI](https://fastapi
 
 ```lua
 {
-  "yourusername/fastapi.nvim",
+  "mrpbennett/fastapi.nvim",
   ft = "python",
   dependencies = {
     "nvim-treesitter/nvim-treesitter",
@@ -38,7 +38,7 @@ A Neovim plugin for exploring, navigating, and testing [FastAPI](https://fastapi
 
 ```lua
 use {
-  "yourusername/fastapi.nvim",
+  "mrpbennett/fastapi.nvim",
   requires = { "nvim-treesitter/nvim-treesitter" },
   config = function()
     require("fastapi").setup()
@@ -90,23 +90,23 @@ require("fastapi").setup({
 
 All commands are available under the `:FastAPI` prefix:
 
-| Command              | Description                  |
-|----------------------|------------------------------|
-| `:FastAPI toggle`   | Toggle the explorer sidebar  |
-| `:FastAPI pick`     | Open the route picker        |
-| `:FastAPI refresh`  | Refresh the route cache      |
-| `:FastAPI codelens` | Toggle CodeLens annotations  |
+| Command             | Description                 |
+| ------------------- | --------------------------- |
+| `:FastAPI toggle`   | Toggle the explorer sidebar |
+| `:FastAPI pick`     | Open the route picker       |
+| `:FastAPI refresh`  | Refresh the route cache     |
+| `:FastAPI codelens` | Toggle CodeLens annotations |
 
 ### Keymaps
 
 Default keymaps (all configurable, set to `false` to disable):
 
-| Keymap         | Action                |
-|----------------|-----------------------|
-| `<leader>Ft`   | Toggle explorer       |
-| `<leader>Fp`   | Open picker           |
-| `<leader>Fr`   | Refresh routes        |
-| `<leader>Fc`   | Toggle CodeLens       |
+| Keymap       | Action          |
+| ------------ | --------------- |
+| `<leader>Ft` | Toggle explorer |
+| `<leader>Fp` | Open picker     |
+| `<leader>Fr` | Refresh routes  |
+| `<leader>Fc` | Toggle CodeLens |
 
 ### Explorer Sidebar
 
@@ -128,13 +128,13 @@ Pressing `<CR>` or `o` on a file header jumps to that file; pressing it on a rou
 
 When the explorer is open, these buffer-local keymaps are available:
 
-| Key          | Action                          |
-|--------------|---------------------------------|
-| `<CR>` / `o` | Jump to route or file           |
-| `s`          | Open in horizontal split        |
-| `v`          | Open in vertical split          |
-| `r`          | Refresh routes                  |
-| `q`          | Close the sidebar               |
+| Key          | Action                   |
+| ------------ | ------------------------ |
+| `<CR>` / `o` | Jump to route or file    |
+| `s`          | Open in horizontal split |
+| `v`          | Open in vertical split   |
+| `r`          | Refresh routes           |
+| `q`          | Close the sidebar        |
 
 ### CodeLens in Test Files
 
@@ -158,23 +158,24 @@ The plugin locates your FastAPI application in this order:
 
 All highlights ship with sensible defaults and can be overridden:
 
-| Group                       | Default          |
-|-----------------------------|------------------|
-| `FastapiMethodGET`          | Green, bold      |
-| `FastapiMethodPOST`         | Blue, bold       |
-| `FastapiMethodPUT`          | Yellow, bold     |
-| `FastapiMethodPATCH`        | Orange, bold     |
-| `FastapiMethodDELETE`       | Red, bold        |
-| `FastapiMethodOPTIONS`      | Purple, bold     |
-| `FastapiMethodHEAD`         | Cyan, bold       |
-| `FastapiMethodTRACE`        | Gray, bold       |
-| `FastapiMethodWEBSOCKET`    | Teal, bold       |
-| `FastapiTitle`              | Orange, bold     |
-| `FastapiRouter`             | Purple, italic   |
-| `FastapiPath`               | Light gray       |
-| `FastapiFunc`               | Cyan             |
+| Group                    | Default        |
+| ------------------------ | -------------- |
+| `FastapiMethodGET`       | Green, bold    |
+| `FastapiMethodPOST`      | Blue, bold     |
+| `FastapiMethodPUT`       | Yellow, bold   |
+| `FastapiMethodPATCH`     | Orange, bold   |
+| `FastapiMethodDELETE`    | Red, bold      |
+| `FastapiMethodOPTIONS`   | Purple, bold   |
+| `FastapiMethodHEAD`      | Cyan, bold     |
+| `FastapiMethodTRACE`     | Gray, bold     |
+| `FastapiMethodWEBSOCKET` | Teal, bold     |
+| `FastapiTitle`           | Orange, bold   |
+| `FastapiRouter`          | Purple, italic |
+| `FastapiPath`            | Light gray     |
+| `FastapiFunc`            | Cyan           |
 
 ## License
 
 MIT
+
 # fastapi.nvim

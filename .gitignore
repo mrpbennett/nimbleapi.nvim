@@ -3,9 +3,10 @@
 .AppleDouble
 .LSOverride
 
-./tests
-./tasks
-./docs
+/test/
+/tests/
+/tasks/
+/docs/
 
 # Neovim
 *.swp
