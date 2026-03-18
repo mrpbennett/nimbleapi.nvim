@@ -61,7 +61,7 @@ M.defaults = {
 }
 
 ---@type NimbleApiConfig
-M.options = {}
+M.options = vim.deepcopy(M.defaults)
 
 ---@param user_opts? table
 function M.setup(user_opts)

@@ -74,6 +74,7 @@ end
 --- Dependency markers that indicate a Spring web project (Boot or plain Framework).
 local SPRING_WEB_MARKERS = {
   "spring-boot-starter-web",
+  "spring-boot-starter-webflux",
   "spring-webmvc",
   "spring-web",
 }
@@ -101,6 +102,16 @@ function M.detect(root)
           return true
         end
       end
+    end
+  end
+
+  -- Fallback: scan for @RestController / @Controller annotations
+  local java_files = utils.glob_files(root, "src/main/java/**/*.java", {
+    "node_modules", ".git", "target", "build",
+  })
+  for _, f in ipairs(java_files) do
+    if utils.file_contains(f, "@RestController") or utils.file_contains(f, "@Controller") then
+      return true
     end
   end
 

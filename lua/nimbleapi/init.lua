@@ -1,7 +1,17 @@
 local M = {}
 
+local _did_setup = false
+
+--- Ensure setup() has been called at least once (lazy-loading guard).
+local function ensure_setup()
+  if not _did_setup then
+    M.setup()
+  end
+end
+
 ---@param opts? table
 function M.setup(opts)
+  _did_setup = true
   require("nimbleapi.config").setup(opts)
 
   -- Load providers (registers them with the provider registry)
@@ -63,14 +73,17 @@ function M.setup(opts)
 end
 
 function M.toggle()
+  ensure_setup()
   require("nimbleapi.explorer").toggle()
 end
 
 function M.pick()
+  ensure_setup()
   require("nimbleapi.picker").pick()
 end
 
 function M.refresh()
+  ensure_setup()
   require("nimbleapi.cache").invalidate_all()
   local explorer = require("nimbleapi.explorer")
   if explorer.is_open() then
@@ -79,6 +92,7 @@ function M.refresh()
 end
 
 function M.codelens()
+  ensure_setup()
   local codelens = require("nimbleapi.codelens")
   local config = require("nimbleapi.config").options
   config.codelens.enabled = not config.codelens.enabled
@@ -92,6 +106,7 @@ function M.codelens()
 end
 
 function M.info(ctx)
+  ensure_setup()
   local lines = require("nimbleapi.providers").info(ctx)
   vim.notify(table.concat(lines, "\n"), vim.log.levels.INFO)
 end

@@ -133,6 +133,12 @@ function M.detect(root)
         phase = "detection",
         reason = "detect() error: " .. tostring(result),
       })
+    elseif ok and not result then
+      table.insert(diagnostics, {
+        provider = provider.name,
+        phase = "detection",
+        reason = "project markers not found in " .. root,
+      })
     end
 
     ::continue::
