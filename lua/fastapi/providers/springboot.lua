@@ -3,7 +3,7 @@ local parser = require("fastapi.parser")
 
 local M = {}
 
-M.name = "springboot"
+M.name = "spring"
 M.language = "java"
 M.file_extensions = { "java" }
 M.test_patterns = { "*Test.java", "*Tests.java", "*IT.java", "src/test/**/*.java" }
@@ -93,24 +93,35 @@ function M.find_project_root()
   return cached_root
 end
 
---- Detect if this is a Spring Boot project.
+--- Dependency markers that indicate a Spring web project (Boot or plain Framework).
+local SPRING_WEB_MARKERS = {
+  "spring-boot-starter-web",
+  "spring-webmvc",
+  "spring-web",
+}
+
+--- Detect if this is a Spring project (Boot or plain Spring MVC).
 ---@param root string
 ---@return boolean
 function M.detect(root)
-  -- Check pom.xml for spring-boot-starter-web
+  -- Check pom.xml
   local pom = utils.join(root, "pom.xml")
   if utils.file_exists(pom) then
-    if utils.file_contains(pom, "spring-boot-starter-web") then
-      return true
+    for _, marker in ipairs(SPRING_WEB_MARKERS) do
+      if utils.file_contains(pom, marker) then
+        return true
+      end
     end
   end
 
-  -- Check build.gradle for spring-boot-starter-web
+  -- Check build.gradle / build.gradle.kts
   for _, name in ipairs({ "build.gradle", "build.gradle.kts" }) do
     local gradle = utils.join(root, name)
     if utils.file_exists(gradle) then
-      if utils.file_contains(gradle, "spring-boot-starter-web") then
-        return true
+      for _, marker in ipairs(SPRING_WEB_MARKERS) do
+        if utils.file_contains(gradle, marker) then
+          return true
+        end
       end
     end
   end
@@ -118,7 +129,8 @@ function M.detect(root)
   return false
 end
 
---- Find the @SpringBootApplication class.
+--- Find the application entry point.
+--- Tries @SpringBootApplication first, falls back to the first @Controller/@RestController.
 ---@param root string
 ---@return table|nil app { file, class_name, line }
 function M.find_app(root)
@@ -126,7 +138,7 @@ function M.find_app(root)
     "node_modules", ".git", "target", "build",
   })
 
-  -- Pre-filter for likely application files
+  -- Pass 1: Look for @SpringBootApplication (preferred — it's the canonical entry point)
   for _, f in ipairs(java_files) do
     if f:match("Application%.java$") and utils.file_contains(f, "@SpringBootApplication") then
       local apps = M._extract_apps(f)
@@ -136,13 +148,19 @@ function M.find_app(root)
     end
   end
 
-  -- Broader scan if naming convention didn't match
   for _, f in ipairs(java_files) do
     if utils.file_contains(f, "@SpringBootApplication") then
       local apps = M._extract_apps(f)
       if #apps > 0 then
         return apps[1]
       end
+    end
+  end
+
+  -- Pass 2: No Boot app found — use the first controller class as the anchor
+  for _, f in ipairs(java_files) do
+    if utils.file_contains(f, "@RestController") or utils.file_contains(f, "@Controller") then
+      return { file = f, class_name = utils.basename(f):gsub("%.java$", ""), line = 1 }
     end
   end
 
@@ -362,7 +380,7 @@ function M.get_route_tree(root)
 
   return {
     file = app and app.file or "",
-    var_name = app and app.class_name or "SpringBootApp",
+    var_name = app and app.class_name or "SpringApp",
     routes = routes,
     routers = {},
   }

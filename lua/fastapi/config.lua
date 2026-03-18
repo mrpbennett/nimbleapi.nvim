@@ -34,7 +34,7 @@ local M = {}
 
 ---@type FastapiConfig
 M.defaults = {
-  provider = nil, -- auto-detect; override: "fastapi", "springboot"
+  provider = nil, -- auto-detect; override: "fastapi", "spring"
   entry_point = nil, -- auto-detect; override: "app.main:app"
   explorer = {
     position = "left",

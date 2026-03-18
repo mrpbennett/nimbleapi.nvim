@@ -1,7 +1,7 @@
 local M = {}
 
 ---@class RouteProvider
----@field name string Provider identifier (e.g., "fastapi", "springboot")
+---@field name string Provider identifier (e.g., "fastapi", "spring")
 ---@field language string Tree-sitter language ("python", "java", etc.)
 ---@field file_extensions string[] File extensions this provider handles (e.g., { "py" })
 ---@field test_patterns string[] Test file glob patterns
