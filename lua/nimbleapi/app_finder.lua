@@ -1,6 +1,6 @@
-local utils = require("fastapi.utils")
-local parser = require("fastapi.parser")
-local import_resolver = require("fastapi.import_resolver")
+local utils = require("nimbleapi.utils")
+local parser = require("nimbleapi.parser")
+local import_resolver = require("nimbleapi.import_resolver")
 
 local M = {}
 
@@ -128,7 +128,7 @@ end
 --- 3. Heuristic scan of all Python files
 ---@return table|nil app { file, var_name, line }
 function M.find_app()
-  local config = require("fastapi.config").options
+  local config = require("nimbleapi.config").options
   local root = import_resolver.find_project_root()
 
   -- Tier 1: User override
@@ -138,7 +138,7 @@ function M.find_app()
       return { file = filepath, var_name = var_name, line = 1 }
     end
     vim.notify(
-      "fastapi.nvim: configured entry_point '" .. config.entry_point .. "' not found",
+      "nimbleapi.nvim: configured entry_point '" .. config.entry_point .. "' not found",
       vim.log.levels.WARN
     )
   end

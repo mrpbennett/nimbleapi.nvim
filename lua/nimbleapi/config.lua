@@ -1,38 +1,38 @@
 local M = {}
 
----@class FastapiExplorerConfig
+---@class NimbleApiExplorerConfig
 ---@field position "left"|"right"
 ---@field width integer
 ---@field icons boolean
 
----@class FastapiPickerConfig
+---@class NimbleApiPickerConfig
 ---@field keymap string|false
 ---@field provider "telescope"|"snacks"|"builtin"|nil  -- nil = auto-detect
 
----@class FastapiKeymapsConfig
+---@class NimbleApiKeymapsConfig
 ---@field toggle string|false
 ---@field pick string|false
 ---@field refresh string|false
 ---@field codelens string|false
 
----@class FastapiCodelensConfig
+---@class NimbleApiCodelensConfig
 ---@field enabled boolean
 ---@field test_patterns string[]
 
----@class FastapiWatchConfig
+---@class NimbleApiWatchConfig
 ---@field enabled boolean
 ---@field debounce_ms integer
 
----@class FastapiConfig
+---@class NimbleApiConfig
 ---@field provider string|nil
 ---@field entry_point string|nil
----@field explorer FastapiExplorerConfig
----@field picker FastapiPickerConfig
----@field keymaps FastapiKeymapsConfig
----@field codelens FastapiCodelensConfig
----@field watch FastapiWatchConfig
+---@field explorer NimbleApiExplorerConfig
+---@field picker NimbleApiPickerConfig
+---@field keymaps NimbleApiKeymapsConfig
+---@field codelens NimbleApiCodelensConfig
+---@field watch NimbleApiWatchConfig
 
----@type FastapiConfig
+---@type NimbleApiConfig
 M.defaults = {
   provider = nil, -- auto-detect; override: "fastapi", "spring"
   entry_point = nil, -- auto-detect; override: "app.main:app"
@@ -60,7 +60,7 @@ M.defaults = {
   },
 }
 
----@type FastapiConfig
+---@type NimbleApiConfig
 M.options = {}
 
 ---@param user_opts? table

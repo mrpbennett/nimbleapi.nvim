@@ -1,5 +1,5 @@
-local utils = require("fastapi.utils")
-local parser = require("fastapi.parser")
+local utils = require("nimbleapi.utils")
+local parser = require("nimbleapi.parser")
 
 local M = {}
 
@@ -440,6 +440,6 @@ function M.extract_test_calls_buf(bufnr)
 end
 
 -- Register with the provider registry
-require("fastapi.providers").register(M)
+require("nimbleapi.providers").register(M)
 
 return M

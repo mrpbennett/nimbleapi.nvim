@@ -3,9 +3,9 @@ local M = {}
 ---@param opts? table
 function M.pick(opts)
   _ = opts -- unused, accepted for API consistency
-  local routes = require("fastapi.cache").get_all_routes()
+  local routes = require("nimbleapi.cache").get_all_routes()
   if #routes == 0 then
-    vim.notify("fastapi.nvim: no routes found", vim.log.levels.INFO)
+    vim.notify("nimbleapi.nvim: no routes found", vim.log.levels.INFO)
     return
   end
 
@@ -17,7 +17,7 @@ function M.pick(opts)
     )
   end
 
-  vim.ui.select(labels, { prompt = "FastAPI Routes" }, function(_, idx)
+  vim.ui.select(labels, { prompt = "NimbleAPI Routes" }, function(_, idx)
     if not idx then
       return
     end

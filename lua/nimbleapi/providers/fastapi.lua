@@ -1,4 +1,4 @@
-local utils = require("fastapi.utils")
+local utils = require("nimbleapi.utils")
 
 local M = {}
 
@@ -64,19 +64,19 @@ end
 ---@param _root string
 ---@return table|nil app { file, var_name, line }
 function M.find_app(_root)
-  return require("fastapi.app_finder").find_app()
+  return require("nimbleapi.app_finder").find_app()
 end
 
 --- Get all routes as a flat list.
 ---@param _root string
 ---@return table[]
 function M.get_all_routes(_root)
-  local app = require("fastapi.app_finder").find_app()
+  local app = require("nimbleapi.app_finder").find_app()
   if not app then
     return {}
   end
 
-  local router_resolver = require("fastapi.router_resolver")
+  local router_resolver = require("nimbleapi.router_resolver")
   local tree = router_resolver.build_route_tree(app)
   if not tree then
     return {}
@@ -89,41 +89,41 @@ end
 ---@param _root string
 ---@return table|nil
 function M.get_route_tree(_root)
-  local app = require("fastapi.app_finder").find_app()
+  local app = require("nimbleapi.app_finder").find_app()
   if not app then
     return nil
   end
-  return require("fastapi.router_resolver").build_route_tree(app)
+  return require("nimbleapi.router_resolver").build_route_tree(app)
 end
 
 --- Extract routes from a single file.
 ---@param filepath string
 ---@return table[]
 function M.extract_routes(filepath)
-  return require("fastapi.parser").extract_routes(filepath)
+  return require("nimbleapi.parser").extract_routes(filepath)
 end
 
 --- Extract include_router() calls from a file.
 ---@param filepath string
 ---@return table[]
 function M.extract_includes(filepath)
-  return require("fastapi.parser").extract_include_routers(filepath)
+  return require("nimbleapi.parser").extract_include_routers(filepath)
 end
 
 --- Extract test client calls from a buffer.
 ---@param bufnr integer
 ---@return table[]
 function M.extract_test_calls_buf(bufnr)
-  return require("fastapi.parser").extract_test_calls_buf(bufnr)
+  return require("nimbleapi.parser").extract_test_calls_buf(bufnr)
 end
 
 --- Find project root.
 ---@return string
 function M.find_project_root()
-  return require("fastapi.import_resolver").find_project_root()
+  return require("nimbleapi.import_resolver").find_project_root()
 end
 
 -- Register with the provider registry
-require("fastapi.providers").register(M)
+require("nimbleapi.providers").register(M)
 
 return M

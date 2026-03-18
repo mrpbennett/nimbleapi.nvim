@@ -1,6 +1,6 @@
-local parser = require("fastapi.parser")
-local import_resolver = require("fastapi.import_resolver")
-local utils = require("fastapi.utils")
+local parser = require("nimbleapi.parser")
+local import_resolver = require("nimbleapi.import_resolver")
+local utils = require("nimbleapi.utils")
 
 local M = {}
 

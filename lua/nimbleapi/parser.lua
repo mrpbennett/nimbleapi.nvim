@@ -1,4 +1,4 @@
-local utils = require("fastapi.utils")
+local utils = require("nimbleapi.utils")
 
 local M = {}
 
@@ -44,12 +44,12 @@ local function get_query(name, language)
   -- Find our query files in the plugin's runtime path
   local query_files = vim.api.nvim_get_runtime_file("queries/" .. language .. "/" .. name .. ".scm", false)
   if #query_files == 0 then
-    error("fastapi.nvim: query file not found: queries/" .. language .. "/" .. name .. ".scm")
+    error("nimbleapi.nvim: query file not found: queries/" .. language .. "/" .. name .. ".scm")
   end
 
   local content = utils.read_file(query_files[1])
   if not content then
-    error("fastapi.nvim: failed to read query file: " .. query_files[1])
+    error("nimbleapi.nvim: failed to read query file: " .. query_files[1])
   end
 
   local query = vim.treesitter.query.parse(language, content)

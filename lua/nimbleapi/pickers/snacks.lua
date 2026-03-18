@@ -1,22 +1,22 @@
 local M = {}
 
 local method_hl_map = {
-  GET = "FastapiMethodGET",
-  POST = "FastapiMethodPOST",
-  PUT = "FastapiMethodPUT",
-  PATCH = "FastapiMethodPATCH",
-  DELETE = "FastapiMethodDELETE",
-  OPTIONS = "FastapiMethodOPTIONS",
-  HEAD = "FastapiMethodHEAD",
-  TRACE = "FastapiMethodTRACE",
-  WEBSOCKET = "FastapiMethodWEBSOCKET",
+  GET = "NimbleApiMethodGET",
+  POST = "NimbleApiMethodPOST",
+  PUT = "NimbleApiMethodPUT",
+  PATCH = "NimbleApiMethodPATCH",
+  DELETE = "NimbleApiMethodDELETE",
+  OPTIONS = "NimbleApiMethodOPTIONS",
+  HEAD = "NimbleApiMethodHEAD",
+  TRACE = "NimbleApiMethodTRACE",
+  WEBSOCKET = "NimbleApiMethodWEBSOCKET",
 }
 
 ---@param opts? table
 function M.pick(opts)
-  local routes = require("fastapi.cache").get_all_routes()
+  local routes = require("nimbleapi.cache").get_all_routes()
   if #routes == 0 then
-    vim.notify("fastapi.nvim: no routes found", vim.log.levels.INFO)
+    vim.notify("nimbleapi.nvim: no routes found", vim.log.levels.INFO)
     return
   end
 
@@ -31,7 +31,7 @@ function M.pick(opts)
   end
 
   Snacks.picker(vim.tbl_extend("force", {
-    title = "FastAPI Routes",
+    title = "NimbleAPI Routes",
     items = items,
     format = function(item, _ctx)
       local route = item.route
@@ -41,7 +41,7 @@ function M.pick(opts)
         { " " },
         { string.format("%-40s", route.path), "Normal" },
         { " " },
-        { (route.func or "") .. "()", "FastapiFunc" },
+        { (route.func or "") .. "()", "NimbleApiFunc" },
       }
     end,
     confirm = function(picker, item)

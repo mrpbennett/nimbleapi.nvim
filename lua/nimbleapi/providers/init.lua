@@ -95,7 +95,7 @@ function M.get_provider()
     return cached_provider
   end
 
-  local config = require("fastapi.config").options
+  local config = require("nimbleapi.config").options
 
   -- User override: find provider by name
   if config.provider then
@@ -108,7 +108,7 @@ function M.get_provider()
       end
     end
     vim.notify(
-      "fastapi.nvim: configured provider '" .. config.provider .. "' not found. "
+      "nimbleapi.nvim: configured provider '" .. config.provider .. "' not found. "
         .. "Available: " .. table.concat(M.registered_names(), ", "),
       vim.log.levels.WARN
     )
@@ -123,7 +123,7 @@ function M.get_provider()
   return cached_provider
 end
 
---- Get the last detection diagnostics (for :FastAPI info).
+--- Get the last detection diagnostics (for :NimbleAPI info).
 ---@return table[]
 function M.get_diagnostics()
   return last_diagnostics or {}
@@ -176,13 +176,13 @@ function M.handles_file(filepath)
   return false
 end
 
---- Build a diagnostic report for :FastAPI info.
+--- Build a diagnostic report for :NimbleAPI info.
 ---@return string[]
 function M.info()
   local root = vim.fn.getcwd()
   local lines = {}
 
-  table.insert(lines, "fastapi.nvim — Provider Info")
+  table.insert(lines, "nimbleapi.nvim — Provider Info")
   table.insert(lines, string.rep("─", 40))
   table.insert(lines, "Project root: " .. root)
   table.insert(lines, "")

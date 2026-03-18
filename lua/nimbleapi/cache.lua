@@ -23,7 +23,7 @@ function M.invalidate_all()
   file_cache = {}
   tree_cache = nil
   flat_cache = nil
-  require("fastapi.providers").reset()
+  require("nimbleapi.providers").reset()
 end
 
 --- Check if a file's cache entry is still valid by comparing mtime.
@@ -53,14 +53,14 @@ function M.get_file_routes(filepath)
     return file_cache[filepath].routes
   end
 
-  local providers = require("fastapi.providers")
+  local providers = require("nimbleapi.providers")
   local provider = providers.get_provider()
   local routes
   if provider then
     routes = provider.extract_routes(filepath)
   else
     -- Fallback to direct parser call for backward compat
-    routes = require("fastapi.parser").extract_routes(filepath)
+    routes = require("nimbleapi.parser").extract_routes(filepath)
   end
 
   local stat = vim.uv.fs_stat(filepath)
@@ -77,7 +77,7 @@ end
 ---@return string
 local function format_no_provider_message(providers_mod)
   local diag = providers_mod.get_diagnostics()
-  local parts = { "fastapi.nvim: no supported framework detected in " .. vim.fn.getcwd() }
+  local parts = { "nimbleapi.nvim: no supported framework detected in " .. vim.fn.getcwd() }
 
   -- Check if any provider had prerequisite failures — those are actionable
   for _, d in ipairs(diag) do
@@ -87,7 +87,7 @@ local function format_no_provider_message(providers_mod)
   end
 
   if #parts == 1 then
-    table.insert(parts, "Run :FastAPI info for details")
+    table.insert(parts, "Run :NimbleAPI info for details")
   end
 
   return table.concat(parts, "\n")
@@ -100,7 +100,7 @@ function M.get_route_tree()
     return tree_cache
   end
 
-  local providers = require("fastapi.providers")
+  local providers = require("nimbleapi.providers")
   local provider = providers.get_provider()
 
   if not provider then
@@ -110,7 +110,7 @@ function M.get_route_tree()
 
   if not provider.get_route_tree then
     vim.notify(
-      "fastapi.nvim: provider '" .. provider.name .. "' does not support route tree building",
+      "nimbleapi.nvim: provider '" .. provider.name .. "' does not support route tree building",
       vim.log.levels.ERROR
     )
     return nil
@@ -120,7 +120,7 @@ function M.get_route_tree()
   tree_cache = provider.get_route_tree(root)
   if not tree_cache then
     vim.notify(
-      "fastapi.nvim: no app found in workspace (provider: " .. provider.name .. ")",
+      "nimbleapi.nvim: no app found in workspace (provider: " .. provider.name .. ")",
       vim.log.levels.WARN
     )
   end
@@ -134,7 +134,7 @@ function M.get_all_routes()
     return flat_cache
   end
 
-  local providers = require("fastapi.providers")
+  local providers = require("nimbleapi.providers")
   local provider = providers.get_provider()
 
   if not provider then
@@ -149,7 +149,7 @@ function M.get_all_routes()
     -- Try via route tree for providers that build trees
     local tree = M.get_route_tree()
     if tree then
-      flat_cache = require("fastapi.router_resolver").flatten_routes(tree)
+      flat_cache = require("nimbleapi.router_resolver").flatten_routes(tree)
     end
   end
   return flat_cache or {}

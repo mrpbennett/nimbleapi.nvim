@@ -1,8 +1,8 @@
-# fastapi.nvim — Project Context for Agents
+# nimbleapi.nvim — Project Context for Agents
 
 ## What This Plugin Does
 
-fastapi.nvim is a Neovim plugin for exploring and navigating API route definitions. It currently supports **FastAPI (Python)** and is being extended to support Express.js, Gin, Axum, and Ruby on Rails.
+nimbleapi.nvim is a Neovim plugin for exploring and navigating API route definitions. It supports **FastAPI (Python)** and **Spring / Spring Boot (Java)**, with plans to add Express.js, Gin, Axum, and Ruby on Rails.
 
 Core features:
 - **Route Explorer** — sidebar listing all HTTP routes grouped by source file, with jump-to-definition
@@ -20,30 +20,42 @@ The UI layer is **framework-agnostic** — explorer, pickers, and codelens all c
 { method = "GET", path = "/users/{id}", func = "get_user", file = "/abs/path.py", line = 42 }
 ```
 
-The parsing layer is **currently FastAPI-specific** and is being refactored into a provider pattern.
+The parsing layer uses a **provider pattern** — each framework implements a provider that handles detection, route extraction, and app discovery.
 
 ### Module Dependency Graph
 
 ```
-plugin/fastapi.lua          -- entry: Neovim commands + autocmds
-  └─ lua/fastapi/init.lua   -- public API: setup(), toggle(), pick(), refresh(), codelens()
-       ├─ config.lua         -- configuration store
-       ├─ explorer.lua       -- sidebar UI (consumes cache)
-       ├─ picker.lua         -- dispatcher → pickers/{telescope,snacks,builtin}.lua
-       ├─ codelens.lua       -- virtual text annotations (consumes parser + cache)
-       └─ cache.lua          -- mtime-based file cache
-            ├─ parser.lua           -- Tree-sitter analysis engine (hardcoded to Python)
-            ├─ app_finder.lua       -- FastAPI() constructor discovery
-            ├─ router_resolver.lua  -- follows include_router() calls recursively
-            └─ import_resolver.lua  -- Python import → filesystem path resolution
+plugin/nimbleapi.lua          -- entry: Neovim commands + autocmds
+  └─ lua/nimbleapi/init.lua   -- public API: setup(), toggle(), pick(), refresh(), codelens(), info()
+       ├─ config.lua           -- configuration store
+       ├─ explorer.lua         -- sidebar UI (consumes cache)
+       ├─ picker.lua           -- dispatcher → pickers/{telescope,snacks,builtin}.lua
+       ├─ codelens.lua         -- virtual text annotations (consumes provider + cache)
+       └─ cache.lua            -- mtime-based file cache
+            ├─ providers/init.lua      -- provider registry + auto-detection + diagnostics
+            ├─ providers/fastapi.lua   -- FastAPI provider (Python)
+            ├─ providers/springboot.lua -- Spring/Spring Boot provider (Java)
+            ├─ parser.lua              -- Tree-sitter analysis engine (multi-language)
+            ├─ app_finder.lua          -- FastAPI() constructor discovery
+            ├─ router_resolver.lua     -- follows include_router() calls recursively
+            └─ import_resolver.lua     -- Python import → filesystem path resolution
 ```
 
 ### Data Flow
 
+#### FastAPI (Python)
 1. `app_finder` locates the file containing `FastAPI()` (3-tier: config → pyproject.toml → heuristic scan)
 2. `parser` runs Tree-sitter queries to extract routes, imports, and `include_router()` calls
 3. `import_resolver` converts Python import statements to filesystem paths
 4. `router_resolver` recursively walks `include_router()` calls, prepends prefixes, builds the full route tree
+
+#### Spring / Spring Boot (Java)
+1. Provider detects project via `spring-boot-starter-web`, `spring-webmvc`, or `spring-web` in pom.xml/build.gradle
+2. Finds entry point: `@SpringBootApplication` class, or falls back to first `@Controller`/`@RestController`
+3. Two-pass extraction: class-level `@RequestMapping` prefix + method-level `@GetMapping` etc.
+4. No cross-file router resolution needed (annotation model is self-contained per class)
+
+#### Common
 5. `cache` stores results keyed by file path, validated by mtime
 6. `explorer`, `picker`, `codelens` read from the cache for their UIs
 
@@ -52,13 +64,13 @@ plugin/fastapi.lua          -- entry: Neovim commands + autocmds
 ## Directory Structure
 
 ```
-fastapi.nvim/
+nimbleapi.nvim/
   plugin/
-    fastapi.lua               -- Neovim entry point: commands, autocmds
-  lua/fastapi/
+    nimbleapi.lua             -- Neovim entry point: commands, autocmds
+  lua/nimbleapi/
     init.lua                  -- Public API facade
     config.lua                -- Configuration defaults and merge
-    parser.lua                -- Tree-sitter engine (currently Python-only)
+    parser.lua                -- Tree-sitter engine (multi-language)
     cache.lua                 -- mtime-based file + route tree cache
     explorer.lua              -- Sidebar UI
     codelens.lua              -- Virtual text annotations
@@ -67,6 +79,10 @@ fastapi.nvim/
     router_resolver.lua       -- Route tree builder (follows include_router)
     import_resolver.lua       -- Python import → filepath resolution
     utils.lua                 -- File I/O, path manipulation, globbing
+    providers/
+      init.lua                -- Provider registry, detection, diagnostics
+      fastapi.lua             -- FastAPI provider (Python)
+      springboot.lua          -- Spring / Spring Boot provider (Java)
     pickers/
       builtin.lua             -- vim.ui.select backend
       telescope.lua           -- Telescope backend
@@ -77,6 +93,11 @@ fastapi.nvim/
     fastapi-includes.scm      -- include_router() patterns
     fastapi-imports.scm       -- Python import patterns (generic)
     fastapi-testclient.scm    -- TestClient call patterns
+  queries/java/
+    springboot-routes.scm     -- Method-level route annotations
+    springboot-controllers.scm -- Class-level @RequestMapping prefix
+    springboot-apps.scm       -- @SpringBootApplication detection
+    springboot-testclient.scm -- MockMvc/WebTestClient patterns
   docs/                       -- Research and planning documents
   tasks/                      -- Implementation task lists
 ```
@@ -87,10 +108,8 @@ fastapi.nvim/
 
 Queries live in `queries/<language>/<name>.scm`. They are loaded by `parser.lua:get_query()` via `vim.api.nvim_get_runtime_file()`.
 
-**Currently hardcoded to Python** at `parser.lua:42,52,66,79`. The multi-framework refactor will parameterize the language.
-
 Naming convention: `<framework>-<purpose>.scm`
-Examples: `fastapi-routes.scm`, `gin-routes.scm`, `axum-routes.scm`
+Examples: `fastapi-routes.scm`, `springboot-routes.scm`, `gin-routes.scm`
 
 Capture names used by the parser engine:
 - `@router_obj` — the variable the route is called on (e.g., `app`, `router`)
@@ -101,11 +120,12 @@ Capture names used by the parser engine:
 
 ---
 
-## Configuration (`lua/fastapi/config.lua`)
+## Configuration (`lua/nimbleapi/config.lua`)
 
 ```lua
 M.defaults = {
-  entry_point = nil,       -- "module:variable" override; nil = auto-detect
+  provider    = nil,         -- auto-detect; override: "fastapi", "spring"
+  entry_point = nil,         -- "module:variable" override; nil = auto-detect
   explorer    = { position = "left", width = 40, icons = true },
   picker      = { provider = nil },   -- nil = auto-detect (telescope/snacks/builtin)
   keymaps     = {
@@ -123,48 +143,35 @@ Merged with `vim.tbl_deep_extend("force", defaults, user_opts)`.
 
 ---
 
-## What's FastAPI-Specific vs Generic
+## Provider System
 
-### FastAPI-Specific (will become provider pattern)
-| File | What it does |
-|------|-------------|
-| `queries/python/fastapi-*.scm` | Matches `@app.get(...)`, `FastAPI()`, `include_router()` |
-| `app_finder.lua` | Finds `FastAPI()` constructor; reads `[tool.fastapi]` in pyproject.toml |
-| `router_resolver.lua` | Follows `include_router(prefix=...)` recursively |
-| `import_resolver.lua` | Python-specific: dotted paths, relative imports, `__init__.py`, src-layout |
-| `parser.lua:ROUTE_METHODS` | FastAPI HTTP method names including `api_route`, `websocket` |
-
-### Generic (UI layer — framework-agnostic)
-| File | Why it's generic |
-|------|-----------------|
-| `explorer.lua` | Renders any `{ method, path, func, file, line }` list |
-| `picker.lua` + `pickers/` | Dispatches to any picker backend |
-| `codelens.lua` | Virtual text engine; only path param pattern is framework-specific |
-| `cache.lua` | mtime cache; data format is route records |
-| `utils.lua` | File I/O, path helpers |
-| `config.lua` | Standard Neovim plugin config merge |
-
----
-
-## Multi-Framework Expansion Plan
-
-See `docs/` for per-framework research. The planned provider interface:
+### Provider Interface
 
 ```lua
 ---@class RouteProvider
----@field language string           -- Tree-sitter language ("python", "go", "rust", "ruby")
----@field file_glob string          -- Source files ("**/*.py", "**/*.go", etc.)
----@field test_patterns string[]    -- Test file globs
----@field path_param_pattern string -- Lua regex for path params
+---@field name string                -- "fastapi", "spring"
+---@field language string            -- Tree-sitter language ("python", "java")
+---@field file_extensions string[]   -- { "py" }, { "java" }
+---@field test_patterns string[]     -- Test file globs
+---@field path_param_pattern string  -- Lua regex for path params
+---@field check_prerequisites fun(): { ok: boolean, message: string|nil }
 ---@field detect fun(root: string): boolean
 ---@field find_app fun(root: string): table|nil
+---@field get_all_routes fun(root: string): table[]
 ---@field extract_routes fun(filepath: string): table[]
 ---@field extract_includes fun(filepath: string): table[]
----@field resolve_import fun(file: string, import_info: table, root: string): string|nil
----@field extract_test_calls fun(filepath: string): table[]
+---@field extract_test_calls_buf fun(bufnr: integer): table[]
+---@field find_project_root fun(): string
 ```
 
-Providers live in `lua/fastapi/providers/<name>.lua`. The registry (`providers/init.lua`) auto-detects from project marker files.
+Providers live in `lua/nimbleapi/providers/<name>.lua`. The registry (`providers/init.lua`) auto-detects from project marker files.
+
+### Detection Flow
+
+1. `check_prerequisites()` verifies environment (e.g., TS parser installed)
+2. `detect(root)` checks project markers (dependency files, source patterns)
+3. On failure, diagnostics are collected and surfaced via `:NimbleAPI info`
+4. Provider cache is keyed on `cwd` — switching projects triggers re-detection
 
 ### Path Parameter Normalization
 
@@ -172,12 +179,10 @@ All frameworks normalize path params to `{param}` at extraction time:
 
 | Style | Frameworks |
 |-------|-----------|
-| `{param}` | FastAPI, Axum (planned), Chi |
+| `{param}` | FastAPI, Spring, Axum (planned), Chi |
 | `:param` | Express, Gin, Rails, Sinatra |
 | `<type:name>` | Flask, Django |
 | `[param]` | Next.js |
-
-Codelens matching at `codelens.lua:135` currently only handles `{param}`. Must be extended per provider.
 
 ---
 
@@ -185,7 +190,7 @@ Codelens matching at `codelens.lua:135` currently only handles `{param}`. Must b
 
 No build step. This is a pure Lua Neovim plugin.
 
-**Manual testing**: Open a FastAPI project in Neovim, run `:FastAPI toggle` to verify the explorer, `:FastAPI pick` for the picker, open a test file for codelens.
+**Manual testing**: Open a project in Neovim, run `:NimbleAPI toggle` to verify the explorer, `:NimbleAPI pick` for the picker, `:NimbleAPI info` to check provider status, open a test file for codelens.
 
 **No automated test suite exists yet.** When adding tests, use [plenary.nvim](https://github.com/nvim-lua/plenary.nvim)'s test harness.
 
@@ -194,10 +199,10 @@ No build step. This is a pure Lua Neovim plugin.
 ## Coding Conventions
 
 - Lua 5.1 (LuaJIT) compatible — no `table.pack`, avoid 5.2+ syntax
-- Use `require("fastapi.module")` not `require("fastapi/module")`
+- Use `require("nimbleapi.module")` not `require("nimbleapi/module")`
 - Error reporting via `vim.notify(msg, vim.log.levels.ERROR)` — never `error()` in callbacks
 - All public module functions documented with LuaLS annotations (`---@param`, `---@return`)
-- Guard against `nil` from `package.loaded` before calling into dependent modules (see `plugin/fastapi.lua` pattern)
+- Guard against `nil` from `package.loaded` before calling into dependent modules (see `plugin/nimbleapi.lua` pattern)
 - Prefer `vim.tbl_deep_extend` for config merging
 - Tree-sitter node text: use `get_text(node, source)` helper — handles both string and buffer sources
 
@@ -210,7 +215,7 @@ When adding a new framework, these are the files to touch:
 1. `queries/<language>/<framework>-routes.scm` — route extraction query
 2. `queries/<language>/<framework>-apps.scm` — app/router discovery query
 3. `queries/<language>/<framework>-includes.scm` — router composition query (if applicable)
-4. `lua/fastapi/providers/<framework>.lua` — provider implementation
-5. `lua/fastapi/providers/init.lua` — register provider + add detection logic
-6. `lua/fastapi/config.lua` — add per-framework test patterns + file globs
-7. `plugin/fastapi.lua` — extend autocmd file patterns beyond `*.py`
+4. `lua/nimbleapi/providers/<framework>.lua` — provider implementation
+5. `lua/nimbleapi/providers/init.lua` — register provider + add detection logic
+6. `lua/nimbleapi/init.lua` — add provider to `providers_to_load` list
+7. `plugin/nimbleapi.lua` — extend autocmd file patterns
