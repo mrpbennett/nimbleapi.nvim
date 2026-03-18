@@ -25,7 +25,6 @@ local M = {}
 
 ---@class NimbleApiConfig
 ---@field provider string|nil
----@field entry_point string|nil
 ---@field explorer NimbleApiExplorerConfig
 ---@field picker NimbleApiPickerConfig
 ---@field keymaps NimbleApiKeymapsConfig
@@ -35,7 +34,6 @@ local M = {}
 ---@type NimbleApiConfig
 M.defaults = {
   provider = nil, -- auto-detect; override: "fastapi", "spring"
-  entry_point = nil, -- auto-detect; override: "app.main:app"
   explorer = {
     position = "left",
     width = 40,
@@ -45,10 +43,10 @@ M.defaults = {
     keymap = false,
   },
   keymaps = {
-    toggle   = "<leader>Ft",
-    pick     = "<leader>Fp",
-    refresh  = "<leader>Fr",
-    codelens = "<leader>Fc",
+    toggle   = "<leader>Nt",
+    pick     = "<leader>Np",
+    refresh  = "<leader>Nr",
+    codelens = "<leader>Nc",
   },
   codelens = {
     enabled = true,

@@ -122,29 +122,15 @@ local function heuristic_scan(root)
 end
 
 --- Discover the FastAPI app entry point.
---- Three-tier strategy:
---- 1. User config entry_point override
---- 2. pyproject.toml [tool.fastapi] section
---- 3. Heuristic scan of all Python files
+--- Two-tier strategy:
+--- 1. pyproject.toml [tool.fastapi] section
+--- 2. Heuristic scan of all Python files
 ---@param root string|nil
 ---@return table|nil app { file, var_name, line }
 function M.find_app(root)
-  local config = require("nimbleapi.config").options
   root = root or import_resolver.find_project_root()
 
-  -- Tier 1: User override
-  if config.entry_point then
-    local filepath, var_name = parse_entry_point(config.entry_point, root)
-    if filepath then
-      return { file = filepath, var_name = var_name, line = 1 }
-    end
-    vim.notify(
-      "nimbleapi.nvim: configured entry_point '" .. config.entry_point .. "' not found",
-      vim.log.levels.WARN
-    )
-  end
-
-  -- Tier 2: pyproject.toml
+  -- Tier 1: pyproject.toml
   local pyproject_entry = read_pyproject_entry(root)
   if pyproject_entry then
     local filepath, var_name = parse_entry_point(pyproject_entry, root)
@@ -163,7 +149,7 @@ function M.find_app(root)
     end
   end
 
-  -- Tier 3: Heuristic scan
+  -- Tier 2: Heuristic scan
   return heuristic_scan(root)
 end
 

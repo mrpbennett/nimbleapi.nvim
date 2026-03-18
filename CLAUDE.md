@@ -125,14 +125,13 @@ Capture names used by the parser engine:
 ```lua
 M.defaults = {
   provider    = nil,         -- auto-detect; override: "fastapi", "spring"
-  entry_point = nil,         -- "module:variable" override; nil = auto-detect
   explorer    = { position = "left", width = 40, icons = true },
   picker      = { provider = nil },   -- nil = auto-detect (telescope/snacks/builtin)
   keymaps     = {
-    toggle   = "<leader>Ft",
-    pick     = "<leader>Fp",
-    refresh  = "<leader>Fr",
-    codelens = "<leader>Fc",
+    toggle   = "<leader>Nt",
+    pick     = "<leader>Np",
+    refresh  = "<leader>Nr",
+    codelens = "<leader>Nc",
   },
   codelens    = { enabled = true, test_patterns = { "test_*.py", "*_test.py", "tests/**/*.py" } },
   watch       = { enabled = true, debounce_ms = 200 },
