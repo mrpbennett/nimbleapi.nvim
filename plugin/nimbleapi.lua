@@ -55,7 +55,7 @@ vim.api.nvim_create_autocmd("BufWritePost", {
 
     -- Only process files the active provider handles
     local providers = package.loaded["nimbleapi.providers"]
-    if providers and not providers.handles_file(ev.file) then
+    if providers and not providers.handles_file(ev.file, { bufnr = ev.buf, filepath = ev.file }) then
       return
     end
 
@@ -102,7 +102,7 @@ vim.api.nvim_create_autocmd("BufEnter", {
     -- Only process files the active provider handles
     local filepath = vim.api.nvim_buf_get_name(ev.buf)
     local providers = package.loaded["nimbleapi.providers"]
-    if providers and filepath ~= "" and not providers.handles_file(filepath) then
+    if providers and filepath ~= "" and not providers.handles_file(filepath, { bufnr = ev.buf, filepath = filepath }) then
       return
     end
 

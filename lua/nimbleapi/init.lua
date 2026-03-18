@@ -91,21 +91,23 @@ function M.codelens()
   end
 end
 
-function M.info()
-  local lines = require("nimbleapi.providers").info()
+function M.info(ctx)
+  local lines = require("nimbleapi.providers").info(ctx)
   vim.notify(table.concat(lines, "\n"), vim.log.levels.INFO)
 end
 
 --- Get all routes (flat list). Convenience for external consumers.
+---@param ctx string|table|nil
 ---@return table[]
-function M.get_routes()
-  return require("nimbleapi.cache").get_all_routes()
+function M.get_routes(ctx)
+  return require("nimbleapi.cache").get_all_routes(ctx)
 end
 
 --- Get route tree (hierarchical). Convenience for external consumers.
+---@param ctx string|table|nil
 ---@return table|nil
-function M.get_route_tree()
-  return require("nimbleapi.cache").get_route_tree()
+function M.get_route_tree(ctx)
+  return require("nimbleapi.cache").get_route_tree(ctx)
 end
 
 return M

@@ -61,23 +61,24 @@ function M.detect(root)
 end
 
 --- Find the FastAPI app entry point.
----@param _root string
+---@param root string|nil
 ---@return table|nil app { file, var_name, line }
-function M.find_app(_root)
-  return require("nimbleapi.app_finder").find_app()
+function M.find_app(root)
+  return require("nimbleapi.app_finder").find_app(root)
 end
 
 --- Get all routes as a flat list.
----@param _root string
+---@param root string|nil
 ---@return table[]
-function M.get_all_routes(_root)
-  local app = require("nimbleapi.app_finder").find_app()
+function M.get_all_routes(root)
+  root = root or M.find_project_root()
+  local app = require("nimbleapi.app_finder").find_app(root)
   if not app then
     return {}
   end
 
   local router_resolver = require("nimbleapi.router_resolver")
-  local tree = router_resolver.build_route_tree(app)
+  local tree = router_resolver.build_route_tree(app, root)
   if not tree then
     return {}
   end
@@ -86,14 +87,15 @@ function M.get_all_routes(_root)
 end
 
 --- Build the route tree (used by cache for tree-level caching).
----@param _root string
+---@param root string|nil
 ---@return table|nil
-function M.get_route_tree(_root)
-  local app = require("nimbleapi.app_finder").find_app()
+function M.get_route_tree(root)
+  root = root or M.find_project_root()
+  local app = require("nimbleapi.app_finder").find_app(root)
   if not app then
     return nil
   end
-  return require("nimbleapi.router_resolver").build_route_tree(app)
+  return require("nimbleapi.router_resolver").build_route_tree(app, root)
 end
 
 --- Extract routes from a single file.
@@ -118,9 +120,10 @@ function M.extract_test_calls_buf(bufnr)
 end
 
 --- Find project root.
+---@param startpath string|nil
 ---@return string
-function M.find_project_root()
-  return require("nimbleapi.import_resolver").find_project_root()
+function M.find_project_root(startpath)
+  return require("nimbleapi.import_resolver").find_project_root(startpath)
 end
 
 -- Register with the provider registry

@@ -5,6 +5,7 @@ local M = {}
 local buf = nil
 local win = nil
 local ns = vim.api.nvim_create_namespace("nimbleapi_explorer")
+local source_buf = nil
 
 --- Line-to-route mapping for cursor-based selection.
 ---@type table<integer, table> 1-indexed line -> route data
@@ -35,6 +36,7 @@ end
 function M.on_buf_wipeout()
 	win = nil
 	buf = nil
+	source_buf = nil
 end
 
 function M.toggle()
@@ -47,6 +49,7 @@ end
 
 function M.open()
 	local config = require("nimbleapi.config").options
+	source_buf = vim.api.nvim_get_current_buf()
 
 	-- Create scratch buffer
 	buf = vim.api.nvim_create_buf(false, true)
@@ -88,7 +91,7 @@ function M.open()
 	end
 
 	M.set_keymaps()
-	M.render()
+	M.render(source_buf)
 end
 
 function M.close()
@@ -97,6 +100,7 @@ function M.close()
 	end
 	win = nil
 	buf = nil
+	source_buf = nil
 end
 
 function M.refresh()
@@ -104,7 +108,7 @@ function M.refresh()
 		return
 	end
 	require("nimbleapi.cache").invalidate_all()
-	M.render()
+	M.render(source_buf)
 end
 
 function M.set_keymaps()
@@ -166,17 +170,25 @@ function M.jump_to_route(split_cmd)
 end
 
 --- Render the route explorer into the sidebar buffer.
-function M.render()
+---@param context_buf integer|nil
+function M.render(context_buf)
 	if not buf or not vim.api.nvim_buf_is_valid(buf) then
 		return
 	end
 
 	local config = require("nimbleapi.config").options
 	local cache = require("nimbleapi.cache")
-	local all_routes = cache.get_all_routes()
+	local route_ctx = nil
+	if context_buf and vim.api.nvim_buf_is_valid(context_buf) then
+		route_ctx = { bufnr = context_buf }
+	end
+	local all_routes = cache.get_all_routes(route_ctx)
 
 	-- Get current buffer's file path for filtering
-	local current_buf = vim.api.nvim_get_current_buf()
+	local current_buf = context_buf
+	if not current_buf or not vim.api.nvim_buf_is_valid(current_buf) then
+		current_buf = vim.api.nvim_get_current_buf()
+	end
 	local current_file = vim.fs.normalize(vim.api.nvim_buf_get_name(current_buf))
 
 	-- Clear previous state
@@ -189,7 +201,7 @@ function M.render()
 
 	if not all_routes or #all_routes == 0 then
 		local providers = require("nimbleapi.providers")
-		local provider = providers.get_provider()
+		local provider = providers.get_provider(route_ctx)
 		local provider_name = provider and provider.name or "unknown"
 		lines = {
 			" Route Explorer",
@@ -227,7 +239,7 @@ function M.render()
 
 	-- Determine app file (first file in original order) for header
 	local providers = require("nimbleapi.providers")
-	local provider = providers.get_provider()
+	local provider = providers.get_provider(route_ctx)
 	local provider_label = provider and provider.name or "routes"
 	local app_file = utils.basename(file_order[1] or "")
 	local title = " " .. provider_label .. " (" .. app_file .. ")"

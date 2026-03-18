@@ -34,11 +34,55 @@ function M.dirname(filepath)
   return vim.fn.fnamemodify(filepath, ":h")
 end
 
+--- Check if a path exists.
+---@param path string
+---@return boolean
+function M.path_exists(path)
+  return vim.uv.fs_stat(path) ~= nil
+end
+
 --- Normalize a path (resolve . and .., remove trailing slashes).
 ---@param path string
 ---@return string
 function M.normalize(path)
   return vim.fs.normalize(path)
+end
+
+--- Resolve a starting directory from a file or directory path.
+---@param startpath string|nil
+---@return string
+function M.resolve_start_dir(startpath)
+  local path = startpath
+  if not path or path == "" then
+    return M.normalize(vim.fn.getcwd())
+  end
+
+  path = M.normalize(path)
+  local stat = vim.uv.fs_stat(path)
+  if stat and stat.type == "file" then
+    return M.dirname(path)
+  end
+
+  return path
+end
+
+--- Find the nearest project root by walking upward for marker files.
+---@param startpath string|nil
+---@param markers string[]
+---@return string
+function M.find_project_root(startpath, markers)
+  local start_dir = M.resolve_start_dir(startpath)
+  local found = vim.fs.find(markers, {
+    upward = true,
+    path = start_dir,
+    stop = vim.env.HOME,
+  })
+
+  if #found > 0 then
+    return M.dirname(found[1])
+  end
+
+  return start_dir
 end
 
 --- Join path segments.

@@ -26,7 +26,7 @@ local function is_test_file(bufnr)
 
   -- Get test patterns: prefer provider-specific, fall back to config
   local providers = require("nimbleapi.providers")
-  local provider = providers.get_provider()
+  local provider = providers.get_provider({ bufnr = bufnr })
   local test_patterns = (provider and provider.test_patterns) or config.codelens.test_patterns
 
   for _, pattern in ipairs(test_patterns) do
@@ -70,14 +70,14 @@ function M.attach(bufnr)
   attached_bufs[bufnr] = true
 
   -- Get route lookup table
-  local route_lookup = require("nimbleapi.cache").get_route_lookup()
+  local route_lookup = require("nimbleapi.cache").get_route_lookup({ bufnr = bufnr })
   if vim.tbl_isempty(route_lookup) then
     return
   end
 
   -- Extract test client calls from this buffer
   local providers = require("nimbleapi.providers")
-  local provider = providers.get_provider()
+  local provider = providers.get_provider({ bufnr = bufnr })
   local calls
   if provider then
     calls = provider.extract_test_calls_buf(bufnr)

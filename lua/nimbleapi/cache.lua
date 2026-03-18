@@ -3,26 +3,26 @@ local M = {}
 ---@type table<string, { routes: table[], mtime: number }>
 local file_cache = {}
 
----@type table|nil Cached route tree (AppDefinition)
-local tree_cache = nil
+---@type table<string, table|false>
+local tree_cache = {}
 
----@type table[]|nil Cached flat route list
-local flat_cache = nil
+---@type table<string, table[]|false>
+local flat_cache = {}
 
 --- Invalidate cache for a specific file.
 ---@param filepath string
 function M.invalidate(filepath)
   filepath = vim.fs.normalize(filepath)
   file_cache[filepath] = nil
-  tree_cache = nil
-  flat_cache = nil
+  tree_cache = {}
+  flat_cache = {}
 end
 
 --- Invalidate all caches.
 function M.invalidate_all()
   file_cache = {}
-  tree_cache = nil
-  flat_cache = nil
+  tree_cache = {}
+  flat_cache = {}
   require("nimbleapi.providers").reset()
 end
 
@@ -54,7 +54,7 @@ function M.get_file_routes(filepath)
   end
 
   local providers = require("nimbleapi.providers")
-  local provider = providers.get_provider()
+  local provider = providers.get_provider({ filepath = filepath })
   local routes
   if provider then
     routes = provider.extract_routes(filepath)
@@ -74,10 +74,11 @@ end
 
 --- Format a user-facing error when no provider is detected.
 ---@param providers_mod table The providers module
+---@param root string|nil
 ---@return string
-local function format_no_provider_message(providers_mod)
-  local diag = providers_mod.get_diagnostics()
-  local parts = { "nimbleapi.nvim: no supported framework detected in " .. vim.fn.getcwd() }
+local function format_no_provider_message(providers_mod, root)
+  local diag = providers_mod.get_diagnostics(root)
+  local parts = { "nimbleapi.nvim: no supported framework detected in " .. (root or vim.fn.getcwd()) }
 
   -- Check if any provider had prerequisite failures — those are actionable
   for _, d in ipairs(diag) do
@@ -94,17 +95,19 @@ local function format_no_provider_message(providers_mod)
 end
 
 --- Build and cache the full route tree.
+---@param ctx string|table|nil
 ---@return table|nil AppDefinition
-function M.get_route_tree()
-  if tree_cache then
-    return tree_cache
+function M.get_route_tree(ctx)
+  local providers = require("nimbleapi.providers")
+  local root = providers.resolve_root(ctx)
+  if tree_cache[root] ~= nil then
+    return tree_cache[root] or nil
   end
 
-  local providers = require("nimbleapi.providers")
-  local provider = providers.get_provider()
+  local provider = providers.get_provider(ctx)
 
   if not provider then
-    vim.notify(format_no_provider_message(providers), vim.log.levels.WARN)
+    vim.notify(format_no_provider_message(providers, root), vim.log.levels.WARN)
     return nil
   end
 
@@ -116,49 +119,54 @@ function M.get_route_tree()
     return nil
   end
 
-  local root = provider.find_project_root()
-  tree_cache = provider.get_route_tree(root)
-  if not tree_cache then
+  local project_root = provider.find_project_root(root)
+  local tree = provider.get_route_tree(project_root)
+  tree_cache[root] = tree or false
+  if not tree then
     vim.notify(
       "nimbleapi.nvim: no app found in workspace (provider: " .. provider.name .. ")",
       vim.log.levels.WARN
     )
   end
-  return tree_cache
+  return tree
 end
 
 --- Get all routes as a flat list (with full paths).
+---@param ctx string|table|nil
 ---@return table[]
-function M.get_all_routes()
-  if flat_cache then
-    return flat_cache
+function M.get_all_routes(ctx)
+  local providers = require("nimbleapi.providers")
+  local root = providers.resolve_root(ctx)
+  if flat_cache[root] ~= nil then
+    return flat_cache[root] or {}
   end
 
-  local providers = require("nimbleapi.providers")
-  local provider = providers.get_provider()
+  local provider = providers.get_provider(ctx)
 
   if not provider then
     -- Trigger get_route_tree so the user sees the diagnostic message
-    M.get_route_tree()
+    M.get_route_tree(ctx)
     return {}
   end
 
-  local root = provider.find_project_root()
-  flat_cache = provider.get_all_routes(root)
-  if not flat_cache or #flat_cache == 0 then
+  local project_root = provider.find_project_root(root)
+  local routes = provider.get_all_routes(project_root)
+  if not routes or #routes == 0 then
     -- Try via route tree for providers that build trees
-    local tree = M.get_route_tree()
+    local tree = M.get_route_tree(ctx)
     if tree then
-      flat_cache = require("nimbleapi.router_resolver").flatten_routes(tree)
+      routes = require("nimbleapi.router_resolver").flatten_routes(tree)
     end
   end
-  return flat_cache or {}
+  flat_cache[root] = routes or false
+  return routes or {}
 end
 
 --- Build a lookup table from path -> route for codelens matching.
+---@param ctx string|table|nil
 ---@return table<string, table> path_to_route
-function M.get_route_lookup()
-  local routes = M.get_all_routes()
+function M.get_route_lookup(ctx)
+  local routes = M.get_all_routes(ctx)
   local lookup = {}
 
   for _, route in ipairs(routes) do

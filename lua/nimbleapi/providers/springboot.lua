@@ -59,38 +59,16 @@ local function strip_quotes(text)
   return text:match('^"(.*)"$') or text:match("^'(.*)'$") or text
 end
 
---- Cached project root.
----@type string|nil
-local cached_root = nil
-
---- Reset cached state (called indirectly via provider registry reset).
 function M.reset()
-  cached_root = nil
+  return
 end
 
 --- Find project root by walking up for pom.xml, build.gradle, or .git.
+---@param startpath string|nil
 ---@return string
-function M.find_project_root()
-  if cached_root then
-    return cached_root
-  end
-
+function M.find_project_root(startpath)
   local markers = { "pom.xml", "build.gradle", "build.gradle.kts", "settings.gradle", ".git" }
-  local cwd = vim.fn.getcwd()
-
-  local found = vim.fs.find(markers, {
-    upward = true,
-    path = cwd,
-    stop = vim.env.HOME,
-  })
-
-  if #found > 0 then
-    cached_root = vim.fn.fnamemodify(found[1], ":h")
-  else
-    cached_root = cwd
-  end
-
-  return cached_root
+  return utils.find_project_root(startpath, markers)
 end
 
 --- Dependency markers that indicate a Spring web project (Boot or plain Framework).

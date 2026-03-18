@@ -6,14 +6,14 @@ local M = {}
 
 --- Parse "module.path:var_name" format into components.
 ---@param entry_point string e.g., "app.main:app"
+---@param root string
 ---@return string|nil filepath, string|nil var_name
-local function parse_entry_point(entry_point)
+local function parse_entry_point(entry_point, root)
   local module_path, var = entry_point:match("^(.+):(.+)$")
   if not module_path then
     return nil, nil
   end
 
-  local root = import_resolver.find_project_root()
   local rel = module_path:gsub("%.", "/")
 
   -- Try direct file
@@ -126,14 +126,15 @@ end
 --- 1. User config entry_point override
 --- 2. pyproject.toml [tool.fastapi] section
 --- 3. Heuristic scan of all Python files
+---@param root string|nil
 ---@return table|nil app { file, var_name, line }
-function M.find_app()
+function M.find_app(root)
   local config = require("nimbleapi.config").options
-  local root = import_resolver.find_project_root()
+  root = root or import_resolver.find_project_root()
 
   -- Tier 1: User override
   if config.entry_point then
-    local filepath, var_name = parse_entry_point(config.entry_point)
+    local filepath, var_name = parse_entry_point(config.entry_point, root)
     if filepath then
       return { file = filepath, var_name = var_name, line = 1 }
     end
@@ -146,7 +147,7 @@ function M.find_app()
   -- Tier 2: pyproject.toml
   local pyproject_entry = read_pyproject_entry(root)
   if pyproject_entry then
-    local filepath, var_name = parse_entry_point(pyproject_entry)
+    local filepath, var_name = parse_entry_point(pyproject_entry, root)
     if filepath then
       -- Verify it actually contains FastAPI()
       local apps = parser.extract_fastapi_apps(filepath)
