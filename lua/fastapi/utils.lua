@@ -72,13 +72,13 @@ function M.relative(filepath, root)
   return filepath
 end
 
---- Glob for files, excluding common non-source directories.
----@param pattern string
+--- Glob for files, excluding specified directories.
 ---@param root string
+---@param pattern string Glob pattern (e.g., "**/*.py", "**/*.java")
+---@param exclude_dirs? string[] Directories to exclude (defaults to common non-source dirs)
 ---@return string[]
-function M.glob_py_files(root, pattern)
-  pattern = pattern or "**/*.py"
-  local exclude_dirs = {
+function M.glob_files(root, pattern, exclude_dirs)
+  exclude_dirs = exclude_dirs or {
     ".venv",
     "venv",
     "__pycache__",
@@ -108,6 +108,14 @@ function M.glob_py_files(root, pattern)
     end
   end
   return filtered
+end
+
+--- Glob for Python files (backward-compat wrapper).
+---@param root string
+---@param pattern? string
+---@return string[]
+function M.glob_py_files(root, pattern)
+  return M.glob_files(root, pattern or "**/*.py")
 end
 
 --- Simple string-contains check for pre-filtering files.

@@ -23,6 +23,7 @@ function M.invalidate_all()
   file_cache = {}
   tree_cache = nil
   flat_cache = nil
+  require("fastapi.providers").reset()
 end
 
 --- Check if a file's cache entry is still valid by comparing mtime.
@@ -52,7 +53,16 @@ function M.get_file_routes(filepath)
     return file_cache[filepath].routes
   end
 
-  local routes = require("fastapi.parser").extract_routes(filepath)
+  local providers = require("fastapi.providers")
+  local provider = providers.get_provider()
+  local routes
+  if provider then
+    routes = provider.extract_routes(filepath)
+  else
+    -- Fallback to direct parser call for backward compat
+    routes = require("fastapi.parser").extract_routes(filepath)
+  end
+
   local stat = vim.uv.fs_stat(filepath)
   file_cache[filepath] = {
     routes = routes,
@@ -69,6 +79,19 @@ function M.get_route_tree()
     return tree_cache
   end
 
+  local providers = require("fastapi.providers")
+  local provider = providers.get_provider()
+
+  if provider and provider.get_route_tree then
+    local root = provider.find_project_root()
+    tree_cache = provider.get_route_tree(root)
+    if not tree_cache then
+      vim.notify("fastapi.nvim: no app found in workspace (provider: " .. provider.name .. ")", vim.log.levels.WARN)
+    end
+    return tree_cache
+  end
+
+  -- Fallback for providers without get_route_tree
   local app = require("fastapi.app_finder").find_app()
   if not app then
     vim.notify("fastapi.nvim: no FastAPI app found in workspace", vim.log.levels.WARN)
@@ -86,6 +109,23 @@ function M.get_all_routes()
     return flat_cache
   end
 
+  local providers = require("fastapi.providers")
+  local provider = providers.get_provider()
+
+  if provider then
+    local root = provider.find_project_root()
+    flat_cache = provider.get_all_routes(root)
+    if not flat_cache or #flat_cache == 0 then
+      -- Try via route tree for providers that build trees
+      local tree = M.get_route_tree()
+      if tree then
+        flat_cache = require("fastapi.router_resolver").flatten_routes(tree)
+      end
+    end
+    return flat_cache or {}
+  end
+
+  -- Fallback: original behavior
   local tree = M.get_route_tree()
   if not tree then
     return {}

@@ -43,10 +43,16 @@ local debounce_timer = nil
 
 vim.api.nvim_create_autocmd("BufWritePost", {
   group = group,
-  pattern = "*.py",
+  pattern = { "*.py", "*.java" },
   callback = function(ev)
     local config = package.loaded["fastapi.config"]
     if not config or not config.options.watch or not config.options.watch.enabled then
+      return
+    end
+
+    -- Only process files the active provider handles
+    local providers = package.loaded["fastapi.providers"]
+    if providers and not providers.handles_file(ev.file) then
       return
     end
 
@@ -77,18 +83,26 @@ vim.api.nvim_create_autocmd("BufWritePost", {
       debounce_timer = nil
     end, delay)
   end,
-  desc = "Refresh FastAPI routes on Python file save",
+  desc = "Refresh routes on source file save",
 })
 
 -- Attach codelens when entering test files
 vim.api.nvim_create_autocmd("BufEnter", {
   group = group,
-  pattern = "*.py",
+  pattern = { "*.py", "*.java" },
   callback = function(ev)
     local config = package.loaded["fastapi.config"]
     if not config or not config.options.codelens or not config.options.codelens.enabled then
       return
     end
+
+    -- Only process files the active provider handles
+    local filepath = vim.api.nvim_buf_get_name(ev.buf)
+    local providers = package.loaded["fastapi.providers"]
+    if providers and filepath ~= "" and not providers.handles_file(filepath) then
+      return
+    end
+
     vim.schedule(function()
       local codelens = package.loaded["fastapi.codelens"]
       if codelens then
@@ -96,7 +110,7 @@ vim.api.nvim_create_autocmd("BufEnter", {
       end
     end)
   end,
-  desc = "Attach FastAPI codelens in test files",
+  desc = "Attach codelens in test files",
 })
 
 -- Cleanup sidebar state on buffer wipeout

@@ -22,13 +22,20 @@ local function is_test_file(bufnr)
 
   local filename = vim.fn.fnamemodify(filepath, ":t")
   local rel_path = vim.fn.fnamemodify(filepath, ":.")
+  local ext = filename:match("%.([^%.]+)$") or ""
 
-  for _, pattern in ipairs(config.codelens.test_patterns) do
+  -- Get test patterns: prefer provider-specific, fall back to config
+  local providers = require("fastapi.providers")
+  local provider = providers.get_provider()
+  local test_patterns = (provider and provider.test_patterns) or config.codelens.test_patterns
+
+  for _, pattern in ipairs(test_patterns) do
     -- Convert glob to lua pattern for simple matching
     if pattern:find("**/", 1, true) then
       -- "tests/**/*.py" -> match any file under tests/
       local prefix = pattern:match("^(.-)%*%*/")
-      if prefix and rel_path:match("^" .. vim.pesc(prefix)) and filename:match("%.py$") then
+      local pat_ext = pattern:match("%.([^%.]+)$") or ""
+      if prefix and rel_path:match("^" .. vim.pesc(prefix)) and ext == pat_ext then
         return true
       end
     elseif pattern:find("*", 1, true) then
@@ -69,8 +76,14 @@ function M.attach(bufnr)
   end
 
   -- Extract test client calls from this buffer
-  local parser = require("fastapi.parser")
-  local calls = parser.extract_test_calls_buf(bufnr)
+  local providers = require("fastapi.providers")
+  local provider = providers.get_provider()
+  local calls
+  if provider then
+    calls = provider.extract_test_calls_buf(bufnr)
+  else
+    calls = require("fastapi.parser").extract_test_calls_buf(bufnr)
+  end
 
   for _, call in ipairs(calls) do
     -- Try to match the test path to a known route

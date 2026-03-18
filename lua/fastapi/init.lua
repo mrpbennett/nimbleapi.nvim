@@ -4,6 +4,10 @@ local M = {}
 function M.setup(opts)
   require("fastapi.config").setup(opts)
 
+  -- Load providers (registers them with the provider registry)
+  require("fastapi.providers.fastapi")
+  require("fastapi.providers.springboot")
+
   local config = require("fastapi.config").options
 
   -- Define highlight groups

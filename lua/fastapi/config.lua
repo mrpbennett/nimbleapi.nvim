@@ -24,6 +24,7 @@ local M = {}
 ---@field debounce_ms integer
 
 ---@class FastapiConfig
+---@field provider string|nil
 ---@field entry_point string|nil
 ---@field explorer FastapiExplorerConfig
 ---@field picker FastapiPickerConfig
@@ -33,6 +34,7 @@ local M = {}
 
 ---@type FastapiConfig
 M.defaults = {
+  provider = nil, -- auto-detect; override: "fastapi", "springboot"
   entry_point = nil, -- auto-detect; override: "app.main:app"
   explorer = {
     position = "left",
