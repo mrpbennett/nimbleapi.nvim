@@ -4,7 +4,7 @@ return require("telescope").register_extension({
   end,
   exports = {
     routes = function(opts)
-      require("fastapi.picker").pick(opts)
+      require("nimbleapi.picker").pick(opts)
     end,
   },
 })

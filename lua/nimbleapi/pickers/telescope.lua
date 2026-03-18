@@ -11,9 +11,9 @@ function M.pick(opts)
 
   opts = opts or require("telescope.themes").get_dropdown({})
 
-  local routes = require("fastapi.cache").get_all_routes()
+  local routes = require("nimbleapi.cache").get_all_routes()
   if #routes == 0 then
-    vim.notify("fastapi.nvim: no routes found", vim.log.levels.INFO)
+    vim.notify("nimbleapi.nvim: no routes found", vim.log.levels.INFO)
     return
   end
 
@@ -27,20 +27,20 @@ function M.pick(opts)
   })
 
   local method_hl_map = {
-    GET = "FastapiMethodGET",
-    POST = "FastapiMethodPOST",
-    PUT = "FastapiMethodPUT",
-    PATCH = "FastapiMethodPATCH",
-    DELETE = "FastapiMethodDELETE",
-    OPTIONS = "FastapiMethodOPTIONS",
-    HEAD = "FastapiMethodHEAD",
-    TRACE = "FastapiMethodTRACE",
-    WEBSOCKET = "FastapiMethodWEBSOCKET",
+    GET = "NimbleApiMethodGET",
+    POST = "NimbleApiMethodPOST",
+    PUT = "NimbleApiMethodPUT",
+    PATCH = "NimbleApiMethodPATCH",
+    DELETE = "NimbleApiMethodDELETE",
+    OPTIONS = "NimbleApiMethodOPTIONS",
+    HEAD = "NimbleApiMethodHEAD",
+    TRACE = "NimbleApiMethodTRACE",
+    WEBSOCKET = "NimbleApiMethodWEBSOCKET",
   }
 
   pickers
     .new(opts, {
-      prompt_title = "FastAPI Routes",
+      prompt_title = "NimbleAPI Routes",
       finder = finders.new_table({
         results = routes,
         entry_maker = function(entry)
@@ -55,7 +55,7 @@ function M.pick(opts)
               return displayer({
                 { entry.method, method_hl },
                 { entry.path },
-                { entry.func .. "()", "FastapiFunc" },
+                { entry.func .. "()", "NimbleApiFunc" },
               })
             end,
           }

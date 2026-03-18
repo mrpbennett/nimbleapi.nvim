@@ -1,10 +1,11 @@
-local utils = require("fastapi.utils")
+local utils = require("nimbleapi.utils")
 
 local M = {}
 
 local buf = nil
 local win = nil
-local ns = vim.api.nvim_create_namespace("fastapi_explorer")
+local ns = vim.api.nvim_create_namespace("nimbleapi_explorer")
+local source_buf = nil
 
 --- Line-to-route mapping for cursor-based selection.
 ---@type table<integer, table> 1-indexed line -> route data
@@ -35,6 +36,7 @@ end
 function M.on_buf_wipeout()
 	win = nil
 	buf = nil
+	source_buf = nil
 end
 
 function M.toggle()
@@ -46,7 +48,8 @@ function M.toggle()
 end
 
 function M.open()
-	local config = require("fastapi.config").options
+	local config = require("nimbleapi.config").options
+	source_buf = vim.api.nvim_get_current_buf()
 
 	-- Create scratch buffer
 	buf = vim.api.nvim_create_buf(false, true)
@@ -64,7 +67,7 @@ function M.open()
 		bufhidden = "wipe",
 		swapfile = false,
 		modifiable = false,
-		filetype = "fastapi-explorer",
+		filetype = "nimbleapi-explorer",
 		buflisted = false,
 	}
 	for k, v in pairs(buf_opts) do
@@ -88,7 +91,7 @@ function M.open()
 	end
 
 	M.set_keymaps()
-	M.render()
+	M.render(source_buf)
 end
 
 function M.close()
@@ -97,14 +100,15 @@ function M.close()
 	end
 	win = nil
 	buf = nil
+	source_buf = nil
 end
 
 function M.refresh()
 	if not M.is_open() then
 		return
 	end
-	require("fastapi.cache").invalidate_all()
-	M.render()
+	require("nimbleapi.cache").invalidate_all()
+	M.render(source_buf)
 end
 
 function M.set_keymaps()
@@ -166,17 +170,25 @@ function M.jump_to_route(split_cmd)
 end
 
 --- Render the route explorer into the sidebar buffer.
-function M.render()
+---@param context_buf integer|nil
+function M.render(context_buf)
 	if not buf or not vim.api.nvim_buf_is_valid(buf) then
 		return
 	end
 
-	local config = require("fastapi.config").options
-	local cache = require("fastapi.cache")
-	local all_routes = cache.get_all_routes()
+	local config = require("nimbleapi.config").options
+	local cache = require("nimbleapi.cache")
+	local route_ctx = nil
+	if context_buf and vim.api.nvim_buf_is_valid(context_buf) then
+		route_ctx = { bufnr = context_buf }
+	end
+	local all_routes = cache.get_all_routes(route_ctx)
 
 	-- Get current buffer's file path for filtering
-	local current_buf = vim.api.nvim_get_current_buf()
+	local current_buf = context_buf
+	if not current_buf or not vim.api.nvim_buf_is_valid(current_buf) then
+		current_buf = vim.api.nvim_get_current_buf()
+	end
 	local current_file = vim.fs.normalize(vim.api.nvim_buf_get_name(current_buf))
 
 	-- Clear previous state
@@ -188,9 +200,19 @@ function M.render()
 	local highlights = {} -- { line_idx (0-based), col_start, col_end, hl_group }
 
 	if not all_routes or #all_routes == 0 then
-		lines = { " FastAPI Routes", string.rep("─", 38), "", "  No FastAPI app found.", "  Run :FastAPI refresh" }
-		table.insert(highlights, { 0, 0, #lines[1], "FastapiTitle" })
-		table.insert(highlights, { 1, 0, #lines[2], "FastapiSeparator" })
+		local providers = require("nimbleapi.providers")
+		local provider = providers.get_provider(route_ctx)
+		local provider_name = provider and provider.name or "unknown"
+		lines = {
+			" Route Explorer",
+			string.rep("─", 38),
+			"",
+			"  No routes found.",
+			provider and ("  Provider: " .. provider_name) or "  No framework detected.",
+			"  Run :NimbleAPI info for details",
+		}
+		table.insert(highlights, { 0, 0, #lines[1], "NimbleApiTitle" })
+		table.insert(highlights, { 1, 0, #lines[2], "NimbleApiSeparator" })
 		vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
 		M._apply_highlights(highlights)
 		vim.api.nvim_set_option_value("modifiable", false, { buf = buf })
@@ -216,13 +238,16 @@ function M.render()
 	end
 
 	-- Determine app file (first file in original order) for header
+	local providers = require("nimbleapi.providers")
+	local provider = providers.get_provider(route_ctx)
+	local provider_label = provider and provider.name or "routes"
 	local app_file = utils.basename(file_order[1] or "")
-	local title = " FastAPI App (" .. app_file .. ")"
+	local title = " " .. provider_label .. " (" .. app_file .. ")"
 	table.insert(lines, title)
-	table.insert(highlights, { 0, 0, #title, "FastapiTitle" })
+	table.insert(highlights, { 0, 0, #title, "NimbleApiTitle" })
 	local sep = string.rep("─", 38)
 	table.insert(lines, sep)
-	table.insert(highlights, { 1, 0, #sep, "FastapiSeparator" })
+	table.insert(highlights, { 1, 0, #sep, "NimbleApiSeparator" })
 
 	-- Sort show_files: main app file first, rest alphabetically
 	local main_file = file_order[1]
@@ -241,7 +266,7 @@ function M.render()
 		local header_line_idx = #lines
 		table.insert(lines, header)
 		line_map[header_line_idx + 1] = { file = filepath, line = 1 }
-		table.insert(highlights, { header_line_idx, 0, #header, "FastapiRouter" })
+		table.insert(highlights, { header_line_idx, 0, #header, "NimbleApiRouter" })
 
 		-- Route lines
 		for _, route in ipairs(routes) do
@@ -297,13 +322,13 @@ function M._render_route_line(lines, highlights, route, config)
 	-- Highlights
 	local method_start = 2 + #icon
 	local method_end = method_start + #method_str
-	table.insert(highlights, { line_idx, method_start, method_end, "FastapiMethod" .. method_str })
+	table.insert(highlights, { line_idx, method_start, method_end, "NimbleApiMethod" .. method_str })
 
 	local path_start = method_start + #method_pad
 	local path_end = path_start + #path
-	table.insert(highlights, { line_idx, path_start, path_end, "FastapiPath" })
+	table.insert(highlights, { line_idx, path_start, path_end, "NimbleApiPath" })
 
-	table.insert(highlights, { line_idx, path_end, #line, "FastapiFunc" })
+	table.insert(highlights, { line_idx, path_end, #line, "NimbleApiFunc" })
 end
 
 --- Apply highlight extmarks to the buffer.

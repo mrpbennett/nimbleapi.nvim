@@ -1,4 +1,4 @@
-local utils = require("fastapi.utils")
+local utils = require("nimbleapi.utils")
 
 local M = {}
 
@@ -32,39 +32,47 @@ local query_cache = {}
 
 --- Read and parse a tree-sitter query from our queries/ directory.
 ---@param name string Query filename without extension (e.g., "fastapi-routes")
+---@param language? string Tree-sitter language (default: "python")
 ---@return vim.treesitter.Query
-local function get_query(name)
-  if query_cache[name] then
-    return query_cache[name]
+local function get_query(name, language)
+  language = language or "python"
+  local cache_key = language .. "/" .. name
+  if query_cache[cache_key] then
+    return query_cache[cache_key]
   end
 
   -- Find our query files in the plugin's runtime path
-  local query_files = vim.api.nvim_get_runtime_file("queries/python/" .. name .. ".scm", false)
+  local query_files = vim.api.nvim_get_runtime_file("queries/" .. language .. "/" .. name .. ".scm", false)
   if #query_files == 0 then
-    error("fastapi.nvim: query file not found: queries/python/" .. name .. ".scm")
+    error("nimbleapi.nvim: query file not found: queries/" .. language .. "/" .. name .. ".scm")
   end
 
   local content = utils.read_file(query_files[1])
   if not content then
-    error("fastapi.nvim: failed to read query file: " .. query_files[1])
+    error("nimbleapi.nvim: failed to read query file: " .. query_files[1])
   end
 
-  local query = vim.treesitter.query.parse("python", content)
-  query_cache[name] = query
+  local query = vim.treesitter.query.parse(language, content)
+  query_cache[cache_key] = query
   return query
 end
 
 --- Parse a file from disk using string parser.
 ---@param filepath string
+---@param language? string Tree-sitter language (default: "python")
 ---@return TSNode|nil root, string|nil source
-function M.parse_file(filepath)
+function M.parse_file(filepath, language)
+  language = language or "python"
   local source = utils.read_file(filepath)
   if not source then
     return nil, nil
   end
 
-  local parser = vim.treesitter.get_string_parser(source, "python")
-  local trees = parser:parse()
+  local ok, ts_parser = pcall(vim.treesitter.get_string_parser, source, language)
+  if not ok or not ts_parser then
+    return nil, nil
+  end
+  local trees = ts_parser:parse()
   if not trees or #trees == 0 then
     return nil, nil
   end
@@ -74,14 +82,16 @@ end
 
 --- Parse an open buffer.
 ---@param bufnr integer
+---@param language? string Tree-sitter language (default: "python")
 ---@return TSNode|nil root, integer|nil bufnr
-function M.parse_buffer(bufnr)
-  local ok, parser = pcall(vim.treesitter.get_parser, bufnr, "python")
-  if not ok or not parser then
+function M.parse_buffer(bufnr, language)
+  language = language or "python"
+  local ok, ts_parser = pcall(vim.treesitter.get_parser, bufnr, language)
+  if not ok or not ts_parser then
     return nil, nil
   end
 
-  local trees = parser:parse()
+  local trees = ts_parser:parse()
   if not trees or #trees == 0 then
     return nil, nil
   end
@@ -468,6 +478,14 @@ function M._extract_test_calls_from_tree(root, source, filepath)
   end
 
   return calls
+end
+
+--- Public accessor for get_query (used by providers that run their own queries).
+---@param name string
+---@param language? string
+---@return vim.treesitter.Query
+function M.get_query_public(name, language)
+  return get_query(name, language)
 end
 
 return M

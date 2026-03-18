@@ -1,6 +1,6 @@
 local M = {}
 
-local ns = vim.api.nvim_create_namespace("fastapi_codelens")
+local ns = vim.api.nvim_create_namespace("nimbleapi_codelens")
 
 --- Extmark ID -> route data mapping.
 ---@type table<integer, table>
@@ -14,7 +14,7 @@ local attached_bufs = {}
 ---@param bufnr integer
 ---@return boolean
 local function is_test_file(bufnr)
-  local config = require("fastapi.config").options
+  local config = require("nimbleapi.config").options
   local filepath = vim.api.nvim_buf_get_name(bufnr)
   if filepath == "" then
     return false
@@ -22,13 +22,20 @@ local function is_test_file(bufnr)
 
   local filename = vim.fn.fnamemodify(filepath, ":t")
   local rel_path = vim.fn.fnamemodify(filepath, ":.")
+  local ext = filename:match("%.([^%.]+)$") or ""
 
-  for _, pattern in ipairs(config.codelens.test_patterns) do
+  -- Get test patterns: prefer provider-specific, fall back to config
+  local providers = require("nimbleapi.providers")
+  local provider = providers.get_provider({ bufnr = bufnr })
+  local test_patterns = (provider and provider.test_patterns) or config.codelens.test_patterns
+
+  for _, pattern in ipairs(test_patterns) do
     -- Convert glob to lua pattern for simple matching
     if pattern:find("**/", 1, true) then
       -- "tests/**/*.py" -> match any file under tests/
       local prefix = pattern:match("^(.-)%*%*/")
-      if prefix and rel_path:match("^" .. vim.pesc(prefix)) and filename:match("%.py$") then
+      local pat_ext = pattern:match("%.([^%.]+)$") or ""
+      if prefix and rel_path:match("^" .. vim.pesc(prefix)) and ext == pat_ext then
         return true
       end
     elseif pattern:find("*", 1, true) then
@@ -63,14 +70,20 @@ function M.attach(bufnr)
   attached_bufs[bufnr] = true
 
   -- Get route lookup table
-  local route_lookup = require("fastapi.cache").get_route_lookup()
+  local route_lookup = require("nimbleapi.cache").get_route_lookup({ bufnr = bufnr })
   if vim.tbl_isempty(route_lookup) then
     return
   end
 
   -- Extract test client calls from this buffer
-  local parser = require("fastapi.parser")
-  local calls = parser.extract_test_calls_buf(bufnr)
+  local providers = require("nimbleapi.providers")
+  local provider = providers.get_provider({ bufnr = bufnr })
+  local calls
+  if provider then
+    calls = provider.extract_test_calls_buf(bufnr)
+  else
+    calls = require("nimbleapi.parser").extract_test_calls_buf(bufnr)
+  end
 
   for _, call in ipairs(calls) do
     -- Try to match the test path to a known route
@@ -83,7 +96,7 @@ function M.attach(bufnr)
       local id = vim.api.nvim_buf_set_extmark(bufnr, ns, call.line - 1, 0, {
         virt_text = {
           { "  -> ", "Comment" },
-          { annotation, "FastapiFunc" },
+          { annotation, "NimbleApiFunc" },
         },
         virt_text_pos = "eol",
         hl_mode = "combine",
@@ -95,16 +108,16 @@ function M.attach(bufnr)
   end
 
   -- Set up buffer-local keymap for jumping to route definition
-  if not vim.b[bufnr].fastapi_codelens_keymap then
+  if not vim.b[bufnr].nimbleapi_codelens_keymap then
     vim.keymap.set("n", "gd", function()
       M.jump_to_route(bufnr)
     end, {
       buffer = bufnr,
       noremap = true,
       silent = true,
-      desc = "Jump to FastAPI route definition",
+      desc = "Jump to NimbleAPI route definition",
     })
-    vim.b[bufnr].fastapi_codelens_keymap = true
+    vim.b[bufnr].nimbleapi_codelens_keymap = true
   end
 end
 

@@ -1,39 +1,18 @@
-local utils = require("fastapi.utils")
+local utils = require("nimbleapi.utils")
 
 local M = {}
 
---- Cached project root.
----@type string|nil
-local cached_root = nil
-
---- Find the project root by walking up from cwd.
+--- Find the project root by walking up from a file path or cwd.
+---@param startpath string|nil
 ---@return string
-function M.find_project_root()
-  if cached_root then
-    return cached_root
-  end
-
-  local markers = { "pyproject.toml", "setup.py", "setup.cfg", ".git" }
-  local cwd = vim.fn.getcwd()
-
-  local found = vim.fs.find(markers, {
-    upward = true,
-    path = cwd,
-    stop = vim.env.HOME,
-  })
-
-  if #found > 0 then
-    cached_root = vim.fn.fnamemodify(found[1], ":h")
-  else
-    cached_root = cwd
-  end
-
-  return cached_root
+function M.find_project_root(startpath)
+  local markers = { "pyproject.toml", "setup.py", "setup.cfg", "requirements.txt", ".git" }
+  return utils.find_project_root(startpath, markers)
 end
 
 --- Reset the cached project root (for testing or workspace changes).
 function M.reset_root()
-  cached_root = nil
+  return
 end
 
 --- Check if the project uses a src layout.

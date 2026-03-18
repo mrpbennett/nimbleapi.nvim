@@ -1,6 +1,6 @@
-local parser = require("fastapi.parser")
-local import_resolver = require("fastapi.import_resolver")
-local utils = require("fastapi.utils")
+local parser = require("nimbleapi.parser")
+local import_resolver = require("nimbleapi.import_resolver")
+local utils = require("nimbleapi.utils")
 
 local M = {}
 
@@ -19,13 +19,14 @@ local M = {}
 
 --- Build the full route tree starting from the app entry file.
 ---@param app table { file, var_name } from app_finder
+---@param project_root string|nil
 ---@return AppDefinition|nil
-function M.build_route_tree(app)
+function M.build_route_tree(app, project_root)
   if not app or not app.file then
     return nil
   end
 
-  local project_root = import_resolver.find_project_root()
+  project_root = project_root or import_resolver.find_project_root(app.file)
   local visited = {} -- prevent infinite recursion
 
   local tree = {

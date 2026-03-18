@@ -1,19 +1,19 @@
-local utils = require("fastapi.utils")
-local parser = require("fastapi.parser")
-local import_resolver = require("fastapi.import_resolver")
+local utils = require("nimbleapi.utils")
+local parser = require("nimbleapi.parser")
+local import_resolver = require("nimbleapi.import_resolver")
 
 local M = {}
 
 --- Parse "module.path:var_name" format into components.
 ---@param entry_point string e.g., "app.main:app"
+---@param root string
 ---@return string|nil filepath, string|nil var_name
-local function parse_entry_point(entry_point)
+local function parse_entry_point(entry_point, root)
   local module_path, var = entry_point:match("^(.+):(.+)$")
   if not module_path then
     return nil, nil
   end
 
-  local root = import_resolver.find_project_root()
   local rel = module_path:gsub("%.", "/")
 
   -- Try direct file
@@ -122,31 +122,18 @@ local function heuristic_scan(root)
 end
 
 --- Discover the FastAPI app entry point.
---- Three-tier strategy:
---- 1. User config entry_point override
---- 2. pyproject.toml [tool.fastapi] section
---- 3. Heuristic scan of all Python files
+--- Two-tier strategy:
+--- 1. pyproject.toml [tool.fastapi] section
+--- 2. Heuristic scan of all Python files
+---@param root string|nil
 ---@return table|nil app { file, var_name, line }
-function M.find_app()
-  local config = require("fastapi.config").options
-  local root = import_resolver.find_project_root()
+function M.find_app(root)
+  root = root or import_resolver.find_project_root()
 
-  -- Tier 1: User override
-  if config.entry_point then
-    local filepath, var_name = parse_entry_point(config.entry_point)
-    if filepath then
-      return { file = filepath, var_name = var_name, line = 1 }
-    end
-    vim.notify(
-      "fastapi.nvim: configured entry_point '" .. config.entry_point .. "' not found",
-      vim.log.levels.WARN
-    )
-  end
-
-  -- Tier 2: pyproject.toml
+  -- Tier 1: pyproject.toml
   local pyproject_entry = read_pyproject_entry(root)
   if pyproject_entry then
-    local filepath, var_name = parse_entry_point(pyproject_entry)
+    local filepath, var_name = parse_entry_point(pyproject_entry, root)
     if filepath then
       -- Verify it actually contains FastAPI()
       local apps = parser.extract_fastapi_apps(filepath)
@@ -162,7 +149,7 @@ function M.find_app()
     end
   end
 
-  -- Tier 3: Heuristic scan
+  -- Tier 2: Heuristic scan
   return heuristic_scan(root)
 end
 

@@ -1,30 +1,33 @@
-if vim.g.loaded_fastapi then
+if vim.g.loaded_nimbleapi then
   return
 end
-vim.g.loaded_fastapi = true
+vim.g.loaded_nimbleapi = true
 
 local subcommands = {
   toggle = function()
-    require("fastapi").toggle()
+    require("nimbleapi").toggle()
   end,
   pick = function()
-    require("fastapi").pick()
+    require("nimbleapi").pick()
   end,
   refresh = function()
-    require("fastapi").refresh()
+    require("nimbleapi").refresh()
   end,
   codelens = function()
-    require("fastapi").codelens()
+    require("nimbleapi").codelens()
+  end,
+  info = function()
+    require("nimbleapi").info()
   end,
 }
 
-vim.api.nvim_create_user_command("FastAPI", function(args)
+vim.api.nvim_create_user_command("NimbleAPI", function(args)
   local subcmd = args.fargs[1]
   local fn = subcommands[subcmd]
   if fn then
     fn()
   else
-    vim.notify("FastAPI: unknown subcommand '" .. (subcmd or "") .. "'", vim.log.levels.ERROR)
+    vim.notify("NimbleAPI: unknown subcommand '" .. (subcmd or "") .. "'", vim.log.levels.ERROR)
   end
 end, {
   nargs = 1,
@@ -33,30 +36,36 @@ end, {
       return key:find(lead, 1, true) == 1
     end, vim.tbl_keys(subcommands))
   end,
-  desc = "FastAPI route explorer",
+  desc = "NimbleAPI route explorer",
 })
 
-local group = vim.api.nvim_create_augroup("FastapiNvim", { clear = true })
+local group = vim.api.nvim_create_augroup("NimbleApiNvim", { clear = true })
 
 -- Debounce timer for file watching
 local debounce_timer = nil
 
 vim.api.nvim_create_autocmd("BufWritePost", {
   group = group,
-  pattern = "*.py",
+  pattern = { "*.py", "*.java" },
   callback = function(ev)
-    local config = package.loaded["fastapi.config"]
+    local config = package.loaded["nimbleapi.config"]
     if not config or not config.options.watch or not config.options.watch.enabled then
       return
     end
 
-    local cache = package.loaded["fastapi.cache"]
+    -- Only process files the active provider handles
+    local providers = package.loaded["nimbleapi.providers"]
+    if providers and not providers.handles_file(ev.file, { bufnr = ev.buf, filepath = ev.file }) then
+      return
+    end
+
+    local cache = package.loaded["nimbleapi.cache"]
     if cache then
       cache.invalidate(ev.file)
     end
 
-    local explorer = package.loaded["fastapi.explorer"]
-    local codelens = package.loaded["fastapi.codelens"]
+    local explorer = package.loaded["nimbleapi.explorer"]
+    local codelens = package.loaded["nimbleapi.codelens"]
     local should_refresh = (explorer and explorer.is_open()) or (codelens and config.options.codelens.enabled)
 
     if not should_refresh then
@@ -69,7 +78,7 @@ vim.api.nvim_create_autocmd("BufWritePost", {
     end
     debounce_timer = vim.defer_fn(function()
       if explorer and explorer.is_open() then
-        require("fastapi").refresh()
+        require("nimbleapi").refresh()
       end
       if codelens and config.options.codelens.enabled then
         codelens.refresh_current()
@@ -77,33 +86,41 @@ vim.api.nvim_create_autocmd("BufWritePost", {
       debounce_timer = nil
     end, delay)
   end,
-  desc = "Refresh FastAPI routes on Python file save",
+  desc = "Refresh routes on source file save",
 })
 
 -- Attach codelens when entering test files
 vim.api.nvim_create_autocmd("BufEnter", {
   group = group,
-  pattern = "*.py",
+  pattern = { "*.py", "*.java" },
   callback = function(ev)
-    local config = package.loaded["fastapi.config"]
+    local config = package.loaded["nimbleapi.config"]
     if not config or not config.options.codelens or not config.options.codelens.enabled then
       return
     end
+
+    -- Only process files the active provider handles
+    local filepath = vim.api.nvim_buf_get_name(ev.buf)
+    local providers = package.loaded["nimbleapi.providers"]
+    if providers and filepath ~= "" and not providers.handles_file(filepath, { bufnr = ev.buf, filepath = filepath }) then
+      return
+    end
+
     vim.schedule(function()
-      local codelens = package.loaded["fastapi.codelens"]
+      local codelens = package.loaded["nimbleapi.codelens"]
       if codelens then
         codelens.attach(ev.buf)
       end
     end)
   end,
-  desc = "Attach FastAPI codelens in test files",
+  desc = "Attach codelens in test files",
 })
 
 -- Cleanup sidebar state on buffer wipeout
 vim.api.nvim_create_autocmd("BufWipeout", {
   group = group,
   callback = function(ev)
-    local explorer = package.loaded["fastapi.explorer"]
+    local explorer = package.loaded["nimbleapi.explorer"]
     if explorer and ev.buf == explorer.get_buf() then
       explorer.on_buf_wipeout()
     end
