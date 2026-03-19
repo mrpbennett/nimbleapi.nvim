@@ -1,5 +1,5 @@
 <h1 align="center">
-    <img src="assets/nimble-logo.png" width="300" alt="NimbleAPI logo"/>
+    <img src="assets/nimble-logo.png" width="350" alt="NimbleAPI logo"/>
     <br/>
     <sub>API route explorer and navigator for Neovim</sub>
 </h1>
