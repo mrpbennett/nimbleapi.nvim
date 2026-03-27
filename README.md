@@ -19,7 +19,7 @@ A Neovim plugin for exploring, navigating, and testing API applications. Browse 
 | FastAPI                     | 🐍 Python               | :green_heart: Supported |
 | Spring / Spring Boot        | ☕ Java                 | :green_heart: Supported |
 | Gin / Echo / Chi / http/net | 🐹 Go                   | :green_heart: Supported |
-| Express.js                  | JavaScript / TypeScript | 🐢🐢 Planned            |
+| Express.js                  | JavaScript / TypeScript | :green_heart: Supported           |
 | Axum                        | 🦀 Rust                 | 🐢🐢🐢 Planned          |
 | Ruby on Rails               | 💎 Ruby                 | 🐢🐢🐢 Planned          |
 
