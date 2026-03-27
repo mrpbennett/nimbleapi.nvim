@@ -32,6 +32,14 @@ A Neovim plugin for exploring, navigating, and testing API applications. Browse 
 - **Smart Discovery** -- auto-detects framework and app entry point from project files
 - **Provider System** -- pluggable architecture makes adding new frameworks straightforward
 
+### Picker
+
+![picker](assets/picker.png)
+
+### Explorer
+
+![explorer](assets/explorer.png)
+
 ## Requirements
 
 - Neovim >= 0.10
