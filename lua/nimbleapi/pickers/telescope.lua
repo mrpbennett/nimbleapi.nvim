@@ -1,7 +1,7 @@
 local M = {}
 
 ---@param opts? table Telescope opts
-function M.pick(opts)
+function M.picker(opts)
   local pickers = require("telescope.pickers")
   local finders = require("telescope.finders")
   local conf = require("telescope.config").values
@@ -22,7 +22,8 @@ function M.pick(opts)
     items = {
       { width = 9 },        -- method
       { width = 40 },       -- path
-      { remaining = true }, -- function
+      { width = 30 },       -- function
+      { remaining = true }, -- filename
     },
   })
 
@@ -55,7 +56,8 @@ function M.pick(opts)
               return displayer({
                 { entry.method, method_hl },
                 { entry.path },
-                { entry.func .. "()", "NimbleApiFunc" },
+                { (entry.func or "?") .. "()", "NimbleApiFunc" },
+                { vim.fn.fnamemodify(entry.file, ":t"), "Comment" },
               })
             end,
           }
@@ -63,7 +65,7 @@ function M.pick(opts)
       }),
       sorter = conf.generic_sorter(opts),
       previewer = conf.grep_previewer(opts),
-      attach_mappings = function(prompt_bufnr, _)
+      attach_mappings = function(prompt_bufnr, map)
         actions.select_default:replace(function()
           actions.close(prompt_bufnr)
           local selection = action_state.get_selected_entry()
@@ -73,6 +75,18 @@ function M.pick(opts)
             vim.cmd("normal! zz")
           end
         end)
+
+        local function test_route()
+          local selection = action_state.get_selected_entry()
+          actions.close(prompt_bufnr)
+          if selection then
+            require("nimbleapi.http").test_route(selection.value)
+          end
+        end
+
+        map("i", "<C-t>", test_route)
+        map("n", "t", test_route)
+
         return true
       end,
     })

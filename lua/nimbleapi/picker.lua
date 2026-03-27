@@ -16,7 +16,7 @@ end
 --- The backend is determined by `config.options.picker.provider` (explicit) or
 --- auto-detected in order: snacks → telescope → builtin.
 ---@param opts? table  Passed through to the backend picker
-function M.pick(opts)
+function M.picker(opts)
   local config = require("nimbleapi.config")
   local provider = (config.options.picker or {}).provider or detect_provider()
 
@@ -29,7 +29,9 @@ function M.pick(opts)
     return
   end
 
-  backend.pick(opts)
+  backend.picker(opts)
 end
+
+M.pick = M.picker -- backward compat (telescope extension)
 
 return M

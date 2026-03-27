@@ -14,14 +14,14 @@ A Neovim plugin for exploring, navigating, and testing API applications. Browse 
 
 ## Supported Frameworks
 
-| Framework | Language | Status |
-|-----------|----------|--------|
-| FastAPI | 🐍 Python | 💚 Supported |
-| Spring / Spring Boot | ☕ Java | :green_heart: Supported |
-| Express.js | JavaScript / TypeScript | 🐢🐢 Planned |
-| Gin | 🐹 Go | 🐢 Planned |
-| Axum | 🦀 Rust | 🐢🐢🐢 Planned |
-| Ruby on Rails | 💎 Ruby | 🐢🐢🐢 Planned |
+| Framework                   | Language                | Status                  |
+| --------------------------- | ----------------------- | ----------------------- |
+| FastAPI                     | 🐍 Python               | :green_heart: Supported |
+| Spring / Spring Boot        | ☕ Java                 | :green_heart: Supported |
+| Gin / Echo / Chi / http/net | 🐹 Go                   | :green_heart: Supported |
+| Express.js                  | JavaScript / TypeScript | 🐢🐢 Planned            |
+| Axum                        | 🦀 Rust                 | 🐢🐢🐢 Planned          |
+| Ruby on Rails               | 💎 Ruby                 | 🐢🐢🐢 Planned          |
 
 ## Features
 
@@ -48,6 +48,8 @@ A Neovim plugin for exploring, navigating, and testing API applications. Browse 
   cmd = "NimbleAPI",
   dependencies = {
     "nvim-treesitter/nvim-treesitter",
+    -- Optional: HTTP client for testing routes
+    -- "mistweaverco/kulala.nvim",
   },
   opts = {},
 }
@@ -62,7 +64,7 @@ require("nimbleapi").setup({
   provider = nil,         -- auto-detect; override: "fastapi", "spring"
 
   explorer = {
-    position = "left",    -- "left" or "right"
+    position = "right",    -- "left" or "right"
     width = 40,
     icons = true,         -- requires a Nerd Font
   },
@@ -76,6 +78,13 @@ require("nimbleapi").setup({
     pick     = "<leader>Np", -- open route picker
     refresh  = "<leader>Nr", -- refresh route cache
     codelens = "<leader>Nc", -- toggle codelens
+    test     = "<leader>Ne", -- test route under cursor
+
+    -- Kulala keymaps (buffer-local on .http files, requires kulala.nvim)
+    http_run     = "<leader>Ns", -- send request
+    http_replay  = "<leader>NR", -- replay last request
+    http_inspect = "<leader>Ni", -- inspect current request
+    http_env     = "<leader>NE", -- set environment
   },
 
   codelens = {
@@ -96,24 +105,39 @@ require("nimbleapi").setup({
 
 All commands are available under the `:NimbleAPI` prefix:
 
-| Command | Description |
-|---------|-------------|
-| `:NimbleAPI toggle` | Toggle the explorer sidebar |
-| `:NimbleAPI pick` | Open the route picker |
-| `:NimbleAPI refresh` | Refresh the route cache |
-| `:NimbleAPI codelens` | Toggle CodeLens annotations |
-| `:NimbleAPI info` | Show provider status and diagnostics |
+| Command               | Description                                  |
+| --------------------- | -------------------------------------------- |
+| `:NimbleAPI toggle`   | Toggle the explorer sidebar                  |
+| `:NimbleAPI pick`     | Open the route picker                        |
+| `:NimbleAPI refresh`  | Refresh the route cache                      |
+| `:NimbleAPI codelens` | Toggle CodeLens annotations                  |
+| `:NimbleAPI test`     | Open HTTP test buffer for route under cursor |
+| `:NimbleAPI info`     | Show provider status and diagnostics         |
 
 ### Default Keymaps
 
 All keymaps are configurable. Set any keymap to `false` to disable it.
 
-| Keymap | Action |
-|--------|--------|
-| `<leader>Nt` | Toggle explorer |
-| `<leader>Np` | Open picker |
-| `<leader>Nr` | Refresh routes |
-| `<leader>Nc` | Toggle CodeLens |
+| Keymap       | Action                  | Scope  |
+| ------------ | ----------------------- | ------ |
+| `<leader>Nt` | Toggle explorer         | Global |
+| `<leader>Np` | Open picker             | Global |
+| `<leader>Nr` | Refresh routes          | Global |
+| `<leader>Nc` | Toggle CodeLens         | Global |
+| `<leader>Ne` | Test route under cursor | Global |
+
+### Kulala HTTP Keymaps
+
+When [kulala.nvim](https://github.com/mistweaverco/kulala.nvim) is installed, these keymaps are automatically bound **buffer-locally** in `.http` files. They are only active in HTTP buffers and won't pollute your normal keymap space.
+
+| Keymap       | Action                  |
+| ------------ | ----------------------- |
+| `<leader>Ns` | Send request            |
+| `<leader>NR` | Replay last request     |
+| `<leader>Ni` | Inspect current request |
+| `<leader>NE` | Set environment         |
+
+All keymaps can be disabled individually by setting them to `false` in your config.
 
 ## Explorer Sidebar
 
@@ -138,13 +162,13 @@ Pressing `<CR>` or `o` on a file header jumps to that file. Pressing it on a rou
 
 ### Explorer Buffer Keymaps
 
-| Key | Action |
-|-----|--------|
-| `<CR>` / `o` | Jump to route or file |
-| `s` | Open in horizontal split |
-| `v` | Open in vertical split |
-| `r` | Refresh routes |
-| `q` | Close the sidebar |
+| Key          | Action                   |
+| ------------ | ------------------------ |
+| `<CR>` / `o` | Jump to route or file    |
+| `s`          | Open in horizontal split |
+| `v`          | Open in vertical split   |
+| `r`          | Refresh routes           |
+| `q`          | Close the sidebar        |
 
 ## CodeLens Annotations
 
@@ -175,21 +199,21 @@ The plugin locates your FastAPI application in this order:
 
 All highlights ship with sensible defaults and can be overridden in your colorscheme:
 
-| Group | Default |
-|-------|---------|
-| `NimbleApiMethodGET` | Green, bold |
-| `NimbleApiMethodPOST` | Blue, bold |
-| `NimbleApiMethodPUT` | Yellow, bold |
-| `NimbleApiMethodPATCH` | Orange, bold |
-| `NimbleApiMethodDELETE` | Red, bold |
-| `NimbleApiMethodOPTIONS` | Purple, bold |
-| `NimbleApiMethodHEAD` | Cyan, bold |
-| `NimbleApiMethodTRACE` | Gray, bold |
-| `NimbleApiMethodWEBSOCKET` | Teal, bold |
-| `NimbleApiTitle` | Orange, bold |
-| `NimbleApiRouter` | Purple, italic |
-| `NimbleApiPath` | Light gray |
-| `NimbleApiFunc` | Cyan |
+| Group                      | Default        |
+| -------------------------- | -------------- |
+| `NimbleApiMethodGET`       | Green, bold    |
+| `NimbleApiMethodPOST`      | Blue, bold     |
+| `NimbleApiMethodPUT`       | Yellow, bold   |
+| `NimbleApiMethodPATCH`     | Orange, bold   |
+| `NimbleApiMethodDELETE`    | Red, bold      |
+| `NimbleApiMethodOPTIONS`   | Purple, bold   |
+| `NimbleApiMethodHEAD`      | Cyan, bold     |
+| `NimbleApiMethodTRACE`     | Gray, bold     |
+| `NimbleApiMethodWEBSOCKET` | Teal, bold     |
+| `NimbleApiTitle`           | Orange, bold   |
+| `NimbleApiRouter`          | Purple, italic |
+| `NimbleApiPath`            | Light gray     |
+| `NimbleApiFunc`            | Cyan           |
 
 ## Diagnostics
 

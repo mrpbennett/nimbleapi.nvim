@@ -26,6 +26,9 @@ local provider_cache = {}
 ---@type table<string, table[]>
 local diagnostics_cache = {}
 
+---@type table<string, RouteProvider[]>
+local provider_list_cache = {}
+
 ---@type string|nil
 local last_context_root = nil
 
@@ -38,6 +41,8 @@ local ROOT_MARKERS = {
   "setup.py",
   "setup.cfg",
   "requirements.txt",
+  "go.mod",
+  "package.json",
   ".git",
 }
 
@@ -111,6 +116,7 @@ function M.detect(root)
 
   for _, provider in ipairs(registry) do
     -- Check prerequisites first (TS parser installed, etc.)
+    local prereq_ok = true
     if provider.check_prerequisites then
       local prereq = provider.check_prerequisites()
       if not prereq.ok then
@@ -119,29 +125,29 @@ function M.detect(root)
           phase = "prerequisites",
           reason = prereq.message or "prerequisites not met",
         })
-        goto continue
+        prereq_ok = false
       end
     end
 
-    -- Check if this project matches the provider
-    local ok, result = pcall(provider.detect, root)
-    if ok and result then
-      return provider, diagnostics
-    elseif not ok then
-      table.insert(diagnostics, {
-        provider = provider.name,
-        phase = "detection",
-        reason = "detect() error: " .. tostring(result),
-      })
-    elseif ok and not result then
-      table.insert(diagnostics, {
-        provider = provider.name,
-        phase = "detection",
-        reason = "project markers not found in " .. root,
-      })
+    if prereq_ok then
+      -- Check if this project matches the provider
+      local ok, result = pcall(provider.detect, root)
+      if ok and result then
+        return provider, diagnostics
+      elseif not ok then
+        table.insert(diagnostics, {
+          provider = provider.name,
+          phase = "detection",
+          reason = "detect() error: " .. tostring(result),
+        })
+      elseif ok and not result then
+        table.insert(diagnostics, {
+          provider = provider.name,
+          phase = "detection",
+          reason = "project markers not found in " .. root,
+        })
+      end
     end
-
-    ::continue::
   end
 
   return nil, diagnostics
@@ -187,6 +193,69 @@ function M.get_provider(ctx)
   return provider
 end
 
+--- Get ALL active providers for a project root (multi-language projects).
+--- For Express projects both express-js and express-ts are returned.
+--- Use get_provider() when you need a single provider for backward compatibility.
+---@param ctx string|table|nil
+---@return RouteProvider[]
+function M.get_active_list(ctx)
+  local root = M.resolve_root(ctx)
+  last_context_root = root
+
+  if provider_list_cache[root] ~= nil then
+    return provider_list_cache[root]
+  end
+
+  local config = require("nimbleapi.config").options
+  local matches = {}
+
+  if config.provider then
+    -- User override: find matching providers by name prefix
+    for _, provider in ipairs(registry) do
+      if provider.name == config.provider
+        or provider.name:match("^" .. vim.pesc(config.provider) .. "%-") then
+        table.insert(matches, provider)
+      end
+    end
+    diagnostics_cache[root] = {}
+  else
+    -- Auto-detect: collect ALL matching providers
+    local diagnostics = {}
+    for _, provider in ipairs(registry) do
+      local prereq_ok = true
+      if provider.check_prerequisites then
+        local prereq = provider.check_prerequisites()
+        if not prereq.ok then
+          table.insert(diagnostics, {
+            provider = provider.name,
+            phase = "prerequisites",
+            reason = prereq.message or "prerequisites not met",
+          })
+          prereq_ok = false
+        end
+      end
+      if prereq_ok then
+        local ok, result = pcall(provider.detect, root)
+        if ok and result then
+          table.insert(matches, provider)
+        elseif not ok then
+          table.insert(diagnostics, {
+            provider = provider.name,
+            phase = "detection",
+            reason = "detect() error: " .. tostring(result),
+          })
+        end
+      end
+    end
+    diagnostics_cache[root] = diagnostics
+  end
+
+  provider_list_cache[root] = matches
+  -- Back-fill single-provider cache for get_provider() backward compat
+  provider_cache[root] = matches[1] or false
+  return matches
+end
+
 --- Get the last detection diagnostics (for :NimbleAPI info).
 ---@param root string|nil
 ---@return table[]
@@ -202,6 +271,7 @@ function M.reset()
     end
   end
   provider_cache = {}
+  provider_list_cache = {}
   diagnostics_cache = {}
   last_context_root = nil
 end
@@ -267,14 +337,18 @@ function M.info(ctx)
   table.insert(lines, "Registered providers:")
   for _, provider in ipairs(registry) do
     local prereq_status = "ok"
+    local prereq_ok = true
     if provider.check_prerequisites then
       local prereq = provider.check_prerequisites()
       if not prereq.ok then
         prereq_status = prereq.message or "failed"
+        prereq_ok = false
+      elseif prereq.message then
+        prereq_status = "ok (warning: " .. prereq.message .. ")"
       end
     end
     local detected = false
-    if prereq_status == "ok" then
+    if prereq_ok then
       local ok, result = pcall(provider.detect, root)
       detected = ok and result
     end
@@ -290,7 +364,7 @@ function M.info(ctx)
   table.insert(lines, "")
 
   -- Active provider
-   local active = M.get_provider(ctx)
+  local active = M.get_provider(ctx)
   if active then
     table.insert(lines, "Active provider: " .. active.name .. " (" .. active.language .. ")")
   else
@@ -302,6 +376,16 @@ function M.info(ctx)
       for _, d in ipairs(diag) do
         table.insert(lines, string.format("  %s [%s]: %s", d.provider, d.phase, d.reason))
       end
+    end
+  end
+
+  -- Multi-provider active list (shown when more than one provider detected)
+  local active_list = M.get_active_list(ctx)
+  if #active_list > 1 then
+    table.insert(lines, "")
+    table.insert(lines, "Active providers (multi-language):")
+    for _, p in ipairs(active_list) do
+      table.insert(lines, string.format("  %s [%s]", p.name, p.language))
     end
   end
 

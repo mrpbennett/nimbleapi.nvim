@@ -1,0 +1,8 @@
+{
+  "workflow": {
+    "_auto_chain_active": false
+  },
+  "granularity": "phase",
+  "research": true,
+  "model_profile": "balanced"
+}

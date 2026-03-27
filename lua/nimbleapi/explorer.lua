@@ -39,7 +39,7 @@ function M.on_buf_wipeout()
 	source_buf = nil
 end
 
-function M.toggle()
+function M.explorer()
 	if M.is_open() then
 		M.close()
 		return
@@ -136,6 +136,14 @@ function M.set_keymaps()
 
 	vim.keymap.set("n", "r", function()
 		M.refresh()
+	end, opts)
+
+	vim.keymap.set("n", "t", function()
+		local cursor = vim.api.nvim_win_get_cursor(win)
+		local route = line_map[cursor[1]]
+		if route and route.method then
+			require("nimbleapi.http").test_route(route)
+		end
 	end, opts)
 
 	vim.keymap.set("n", "q", function()
@@ -258,27 +266,28 @@ function M.render(context_buf)
 	end)
 
 	for gi, filepath in ipairs(show_files) do
-		local routes = groups[filepath]
-		if not routes then goto continue end
+		local file_routes = groups[filepath]
+		if file_routes then
+			-- File header line
+			local header = " " .. utils.basename(filepath)
+			local header_line_idx = #lines
+			table.insert(lines, header)
+			line_map[header_line_idx + 1] = { file = filepath, line = 1 }
+			table.insert(highlights, { header_line_idx, 0, #header, "NimbleApiRouter" })
 
-		-- File header line
-		local header = " " .. utils.basename(filepath)
-		local header_line_idx = #lines
-		table.insert(lines, header)
-		line_map[header_line_idx + 1] = { file = filepath, line = 1 }
-		table.insert(highlights, { header_line_idx, 0, #header, "NimbleApiRouter" })
+			-- Route lines
+			local win_width = (win and vim.api.nvim_win_is_valid(win))
+				and vim.api.nvim_win_get_width(win)
+				or config.explorer.width
+			for _, route in ipairs(file_routes) do
+				M._render_route_line(lines, highlights, route, config, win_width)
+			end
 
-		-- Route lines
-		for _, route in ipairs(routes) do
-			M._render_route_line(lines, highlights, route, config)
+			-- Blank separator between groups (not after the last one)
+			if gi < #show_files then
+				table.insert(lines, "")
+			end
 		end
-
-		-- Blank separator between groups (not after the last one)
-		if gi < #show_files then
-			table.insert(lines, "")
-		end
-
-		::continue::
 	end
 
 	vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
@@ -299,7 +308,8 @@ end
 ---@param highlights table[]
 ---@param route table
 ---@param config table
-function M._render_route_line(lines, highlights, route, config)
+---@param win_width integer
+function M._render_route_line(lines, highlights, route, config, win_width)
 	local line_idx = #lines
 
 	local use_icons = config.explorer.icons
@@ -310,10 +320,19 @@ function M._render_route_line(lines, highlights, route, config)
 	end
 
 	local method_pad = method_str .. string.rep(" ", 9 - #method_str)
-	local path = route.path or "/"
-	local func_str = " → " .. (route.func or "?") .. "()"
+	local path = (route.path or "/"):gsub("[\n\r]", "")
+	local func_name = ((route.func or "?"):gsub("[\n\r]", "")) .. "()"
 
-	local line = "  " .. icon .. method_pad .. path .. func_str
+	-- Build left part (indent + icon + method + path) and right part (func name)
+	local left = "  " .. icon .. method_pad .. path
+	local left_len = #left
+	local right_len = #func_name
+	-- Pad between path and func_name so func_name is right-aligned to window edge
+	local gap = win_width - left_len - right_len
+	if gap < 2 then
+		gap = 2
+	end
+	local line = left .. string.rep(" ", gap) .. func_name
 	table.insert(lines, line)
 
 	-- Store line-to-route mapping (1-indexed)
@@ -328,7 +347,8 @@ function M._render_route_line(lines, highlights, route, config)
 	local path_end = path_start + #path
 	table.insert(highlights, { line_idx, path_start, path_end, "NimbleApiPath" })
 
-	table.insert(highlights, { line_idx, path_end, #line, "NimbleApiFunc" })
+	local func_start = left_len + gap
+	table.insert(highlights, { line_idx, func_start, func_start + right_len, "NimbleApiFunc" })
 end
 
 --- Apply highlight extmarks to the buffer.

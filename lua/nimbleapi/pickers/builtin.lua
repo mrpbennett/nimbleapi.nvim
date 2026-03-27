@@ -1,7 +1,7 @@
 local M = {}
 
 ---@param opts? table
-function M.pick(opts)
+function M.picker(opts)
   _ = opts -- unused, accepted for API consistency
   local routes = require("nimbleapi.cache").get_all_routes()
   if #routes == 0 then
@@ -13,7 +13,7 @@ function M.pick(opts)
   for _, route in ipairs(routes) do
     table.insert(
       labels,
-      string.format("%-9s %-40s → %s()", route.method, route.path, route.func or "")
+      string.format("%-9s %-40s → %-30s %s", route.method, route.path, (route.func or "") .. "()", vim.fn.fnamemodify(route.file, ":t"))
     )
   end
 

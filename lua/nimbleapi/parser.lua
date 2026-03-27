@@ -33,7 +33,7 @@ local query_cache = {}
 --- Read and parse a tree-sitter query from our queries/ directory.
 ---@param name string Query filename without extension (e.g., "fastapi-routes")
 ---@param language? string Tree-sitter language (default: "python")
----@return vim.treesitter.Query
+---@return vim.treesitter.Query|nil
 local function get_query(name, language)
   language = language or "python"
   local cache_key = language .. "/" .. name
@@ -44,12 +44,14 @@ local function get_query(name, language)
   -- Find our query files in the plugin's runtime path
   local query_files = vim.api.nvim_get_runtime_file("queries/" .. language .. "/" .. name .. ".scm", false)
   if #query_files == 0 then
-    error("nimbleapi.nvim: query file not found: queries/" .. language .. "/" .. name .. ".scm")
+    vim.notify("nimbleapi.nvim: query file not found: queries/" .. language .. "/" .. name .. ".scm", vim.log.levels.ERROR)
+    return nil
   end
 
   local content = utils.read_file(query_files[1])
   if not content then
-    error("nimbleapi.nvim: failed to read query file: " .. query_files[1])
+    vim.notify("nimbleapi.nvim: failed to read query file: " .. query_files[1], vim.log.levels.ERROR)
+    return nil
   end
 
   local query = vim.treesitter.query.parse(language, content)
@@ -140,6 +142,7 @@ end
 ---@return table[]
 function M._extract_routes_from_tree(root, source, filepath)
   local query = get_query("fastapi-routes")
+  if not query then return {} end
   local routes = {}
 
   for _, match, _ in query:iter_matches(root, source, 0, -1) do
@@ -154,7 +157,10 @@ function M._extract_routes_from_tree(root, source, filepath)
         local method_str = get_text(node, source)
         route.method = ROUTE_METHODS[method_str]
       elseif name == "route_path" then
-        route.path = get_text(node, source)
+        -- Node is the string node itself (captures include quote delimiters),
+        -- so strip the surrounding quotes. Handles empty strings "" correctly.
+        local raw = get_text(node, source)
+        route.path = raw:match('^"(.*)"$') or raw:match("^'(.*)'$") or raw
       elseif name == "func_name" then
         route.func = get_text(node, source)
         route.line = node:range() + 1 -- 1-indexed
@@ -184,6 +190,7 @@ function M.extract_fastapi_apps(filepath)
   end
 
   local query = get_query("fastapi-apps")
+  if not query then return {} end
   local apps = {}
 
   for _, match, _ in query:iter_matches(root, source, 0, -1) do
@@ -223,6 +230,7 @@ end
 ---@return table[]
 function M._extract_includes_from_tree(root, source, filepath)
   local query = get_query("fastapi-includes")
+  if not query then return {} end
   local includes = {}
 
   for _, match, _ in query:iter_matches(root, source, 0, -1) do
@@ -330,6 +338,7 @@ end
 ---@return table
 function M._extract_imports_from_tree(root, source, filepath)
   local query = get_query("fastapi-imports")
+  if not query then return {} end
   local imports = {}
 
   for _, match, _ in query:iter_matches(root, source, 0, -1) do
@@ -451,6 +460,7 @@ end
 ---@return table[]
 function M._extract_test_calls_from_tree(root, source, filepath)
   local query = get_query("fastapi-testclient")
+  if not query then return {} end
   local calls = {}
 
   for _, match, _ in query:iter_matches(root, source, 0, -1) do
@@ -480,10 +490,19 @@ function M._extract_test_calls_from_tree(root, source, filepath)
   return calls
 end
 
+--- Get text from a node, handling both string source and buffer source.
+--- Public accessor for providers that run their own queries.
+---@param node TSNode
+---@param source string|integer
+---@return string
+function M.get_text(node, source)
+  return get_text(node, source)
+end
+
 --- Public accessor for get_query (used by providers that run their own queries).
 ---@param name string
 ---@param language? string
----@return vim.treesitter.Query
+---@return vim.treesitter.Query|nil
 function M.get_query_public(name, language)
   return get_query(name, language)
 end

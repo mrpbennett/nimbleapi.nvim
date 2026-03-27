@@ -141,25 +141,36 @@ function M.get_all_routes(ctx)
     return flat_cache[root] or {}
   end
 
-  local provider = providers.get_provider(ctx)
+  local active_list = providers.get_active_list(ctx)
 
-  if not provider then
+  if not active_list or #active_list == 0 then
     -- Trigger get_route_tree so the user sees the diagnostic message
     M.get_route_tree(ctx)
     return {}
   end
 
-  local project_root = provider.find_project_root(root)
-  local routes = provider.get_all_routes(project_root)
-  if not routes or #routes == 0 then
-    -- Try via route tree for providers that build trees
-    local tree = M.get_route_tree(ctx)
-    if tree then
-      routes = require("nimbleapi.router_resolver").flatten_routes(tree)
+  local all_routes = {}
+  for _, provider in ipairs(active_list) do
+    local project_root = provider.find_project_root(root)
+    local routes = provider.get_all_routes(project_root)
+    if routes and #routes > 0 then
+      vim.list_extend(all_routes, routes)
+    else
+      -- Try via route tree for providers that build trees
+      if provider.get_route_tree then
+        local tree = provider.get_route_tree(project_root)
+        if tree then
+          local tree_routes = require("nimbleapi.router_resolver").flatten_routes(tree)
+          if tree_routes then
+            vim.list_extend(all_routes, tree_routes)
+          end
+        end
+      end
     end
   end
-  flat_cache[root] = routes or false
-  return routes or {}
+
+  flat_cache[root] = #all_routes > 0 and all_routes or false
+  return all_routes
 end
 
 --- Build a lookup table from path -> route for codelens matching.

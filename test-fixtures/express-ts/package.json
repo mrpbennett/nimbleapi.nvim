@@ -1,0 +1,6 @@
+{
+  "name": "express-test-ts",
+  "dependencies": {
+    "express": "^4.18.0"
+  }
+}

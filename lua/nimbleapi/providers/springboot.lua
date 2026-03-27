@@ -177,7 +177,7 @@ function M._extract_apps(filepath)
       local name = query.captures[id]
       local node = type(nodes) == "table" and nodes[1] or nodes
       if name == "app_class" then
-        app.class_name = vim.treesitter.get_node_text(node, source)
+        app.class_name = parser.get_text(node, source)
         app.line = node:range() + 1
       end
     end
@@ -209,9 +209,9 @@ local function extract_class_prefix(root_node, source)
       local name = query.captures[id]
       local node = type(nodes) == "table" and nodes[1] or nodes
       if name == "class_prefix" then
-        prefix = strip_quotes(vim.treesitter.get_node_text(node, source))
+        prefix = strip_quotes(parser.get_text(node, source))
       elseif name == "class_name" then
-        class_name = vim.treesitter.get_node_text(node, source)
+        class_name = parser.get_text(node, source)
       end
     end
     -- Prefer match with a non-empty prefix (@RequestMapping("/api"))
@@ -256,7 +256,7 @@ function M.extract_routes(filepath)
     for id, nodes in pairs(match) do
       local name = query.captures[id]
       local node = type(nodes) == "table" and nodes[1] or nodes
-      local text = vim.treesitter.get_node_text(node, source)
+      local text = parser.get_text(node, source)
 
       if name == "http_method" then
         entry.annotation = text
@@ -404,7 +404,7 @@ function M.extract_test_calls_buf(bufnr)
     for id, nodes in pairs(match) do
       local name = query.captures[id]
       local node = type(nodes) == "table" and nodes[1] or nodes
-      local text = vim.treesitter.get_node_text(node, buf)
+      local text = parser.get_text(node, buf)
 
       if name == "client_var" then
         call.client_var = text
