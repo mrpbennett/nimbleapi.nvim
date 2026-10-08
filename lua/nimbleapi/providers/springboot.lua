@@ -59,6 +59,20 @@ local function strip_quotes(text)
   return text:match('^"(.*)"$') or text:match("^'(.*)'$") or text
 end
 
+--- Join a class-level prefix and a method-level path the way Spring does:
+--- segments are separated by "/" even when the path omits its leading slash.
+---@param prefix string
+---@param path string
+---@return string
+local function join_path(prefix, path)
+  local full = "/" .. prefix .. "/" .. path
+  full = full:gsub("//+", "/")
+  if #full > 1 and path == "" and prefix:sub(-1) ~= "/" then
+    full = full:gsub("/$", "")
+  end
+  return full
+end
+
 function M.reset()
   return
 end
@@ -273,7 +287,8 @@ function M.extract_routes(filepath)
       end
     end
 
-    if entry.func and entry.line then
+    -- Only mapping annotations contribute; ignore e.g. @PreAuthorize("...")
+    if entry.method and entry.func and entry.line then
       local key = entry.line
       if not by_line[key] then
         by_line[key] = { file = filepath }
@@ -316,13 +331,7 @@ function M.extract_routes(filepath)
     route._request_method = nil
 
     if route.method and route.func then
-      route.path = route.path or ""
-      local full_path = class_prefix .. route.path
-      full_path = full_path:gsub("//+", "/")
-      if full_path == "" then
-        full_path = "/"
-      end
-      route.path = full_path
+      route.path = join_path(class_prefix, route.path or "")
       table.insert(routes, route)
     end
   end

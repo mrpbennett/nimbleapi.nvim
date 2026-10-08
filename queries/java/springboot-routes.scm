@@ -8,7 +8,8 @@
     (annotation
       name: (identifier) @http_method
       arguments: (annotation_argument_list
-        (string_literal) @route_path)))
+        (string_literal) @route_path))
+    (#any-of? @http_method "GetMapping" "PostMapping" "PutMapping" "DeleteMapping" "PatchMapping" "RequestMapping"))
   name: (identifier) @func_name) @route_def
 
 ;; Pattern 2: Shortcut annotation with value= or path= keyword argument
@@ -21,7 +22,8 @@
         (element_value_pair
           key: (identifier) @_path_key
           value: (string_literal) @route_path)
-        (#any-of? @_path_key "value" "path"))))
+        (#any-of? @_path_key "value" "path")))
+    (#any-of? @http_method "GetMapping" "PostMapping" "PutMapping" "DeleteMapping" "PatchMapping" "RequestMapping"))
   name: (identifier) @func_name) @route_def
 
 ;; Pattern 3: Marker annotation with no arguments (path defaults to "")
@@ -29,7 +31,8 @@
 (method_declaration
   (modifiers
     (marker_annotation
-      name: (identifier) @http_method))
+      name: (identifier) @http_method)
+    (#any-of? @http_method "GetMapping" "PostMapping" "PutMapping" "DeleteMapping" "PatchMapping" "RequestMapping"))
   name: (identifier) @func_name) @route_def
 
 ;; Pattern 4: @RequestMapping with method= only (no value=/path=)
